@@ -1,10 +1,12 @@
 import OpenAI from "openai";
 import type { AnalysisResult } from "./types";
 
-const client = new OpenAI({
-  apiKey: process.env.LLM_API_KEY!,
-  baseURL: process.env.LLM_BASE_URL!,
-});
+function getClient() {
+  return new OpenAI({
+    apiKey: process.env.LLM_API_KEY!,
+    baseURL: process.env.LLM_BASE_URL!,
+  });
+}
 
 function buildAnalysisPrompt(imageCount: number): string {
   const multiNote =
@@ -41,7 +43,7 @@ export async function analyzeProduct(
   }
   content.push({ type: "text", text: buildAnalysisPrompt(images.length) });
 
-  const response = await client.chat.completions.create({
+  const response = await getClient().chat.completions.create({
     model: "gemini-3.1-flash-image-preview",
     messages: [{ role: "user", content }],
     max_tokens: 1500,

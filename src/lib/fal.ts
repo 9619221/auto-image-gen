@@ -1,9 +1,11 @@
 import OpenAI from "openai";
 
-const client = new OpenAI({
-  apiKey: process.env.LLM_API_KEY!,
-  baseURL: process.env.LLM_BASE_URL!,
-});
+function getClient() {
+  return new OpenAI({
+    apiKey: process.env.LLM_API_KEY!,
+    baseURL: process.env.LLM_BASE_URL!,
+  });
+}
 
 const MODEL = "gemini-3.1-flash-image-preview";
 
@@ -33,7 +35,7 @@ export async function generateProductImage(
 
   content.push({ type: "text", text: multiNote + prompt });
 
-  const response = await client.chat.completions.create({
+  const response = await getClient().chat.completions.create({
     model: MODEL,
     messages: [{ role: "user", content }],
     max_tokens: 4000,
