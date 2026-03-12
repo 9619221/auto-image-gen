@@ -1,9 +1,13 @@
 import OpenAI from "openai";
 
 function getClient() {
+  const apiKey = process.env.LLM_API_KEY || process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error("未配置 API Key，请设置环境变量 LLM_API_KEY");
+  }
   return new OpenAI({
-    apiKey: process.env.LLM_API_KEY!,
-    baseURL: process.env.LLM_BASE_URL!,
+    apiKey,
+    baseURL: process.env.LLM_BASE_URL,
   });
 }
 
