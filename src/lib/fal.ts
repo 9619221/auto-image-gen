@@ -46,9 +46,11 @@ export async function generateProductImage(
 
   const noChildrenRule = "\n\n🚫 STRICT RULE — NO MINORS: Do NOT include any babies, infants, toddlers, children, or underage persons in the generated image. If the scene requires showing people, use ONLY adults (18+ years old). This rule applies to ALL image types with no exceptions.\n\n";
 
+  const noBrandRule = "\n\n🚫 STRICT RULE — NO BRAND LOGOS: Do NOT include any real brand names, logos, or trademarks in the generated image (e.g., Coca-Cola, Nike, Apple, Samsung, etc.). If the scene needs to show items like bottles, cups, phones, etc., use GENERIC unbranded versions only. This avoids trademark infringement.\n\n";
+
   const englishRuleAfter = "\n\n⚠️ FINAL REMINDER — ENGLISH ONLY: Every single piece of text rendered on this image MUST be in English. Do NOT write any Chinese characters (中文/汉字) anywhere on the image. This includes headers, labels, annotations, captions, feature descriptions, and any other visible text. Translate all Chinese content to English. This is a STRICT requirement.";
 
-  content.push({ type: "text", text: multiNote + englishRuleBefore + noChildrenRule + prompt + englishRuleAfter });
+  content.push({ type: "text", text: multiNote + englishRuleBefore + noChildrenRule + noBrandRule + prompt + englishRuleAfter });
 
   const response = await getClient().chat.completions.create({
     model: MODEL,
