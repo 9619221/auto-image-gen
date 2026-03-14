@@ -23,14 +23,16 @@ export function generatePlans(
           description: `${productName}居中展示，纯白背景，产品占85%画面，展示完整外观和核心结构，专业摄影棚灯光。`,
           prompt: `Create a professional Amazon product listing main image for this exact product.
 
+🔒 PRODUCT FIDELITY RULE: The generated product must be a FAITHFUL reproduction of the reference image(s). Match the EXACT shape, color, texture, material, stitching, edges, and proportions. Do NOT alter, stylize, or "improve" the product appearance.
+
 REQUIREMENTS:
 - Pure white background (RGB 255,255,255), absolutely clean
+- Show ONLY ONE product — do NOT duplicate or show multiple copies
 - Product centered, occupying 85% of the frame
 - Show the product from its best angle, clearly displaying its structure and design
 - Professional studio lighting with soft, even illumination
 - Sharp, crisp product edges
 - NO text, NO logos, NO watermarks, NO annotations, NO props, NO dimension lines or measurements
-- The product must look EXACTLY like the reference image - same shape, color, material, proportions
 - CRITICAL: Maintain the product's REAL-WORLD size proportions. Do NOT exaggerate or distort the product dimensions
 - High-end commercial e-commerce photography quality
 - 800x800px square format
@@ -47,8 +49,10 @@ This is the HERO image - it must be clean, professional, and make the product lo
 
 ⚠️ ALL TEXT ON THE IMAGE MUST BE IN ENGLISH. If any feature description below is in Chinese or another language, translate it to English before writing it on the image.
 
+🔒 PRODUCT FIDELITY RULE: The product in this image must look EXACTLY like the reference photos — same shape, color, texture, material. Do NOT alter the product appearance. Show ONLY ONE product.
+
 LAYOUT:
-- Product centered on a clean, light gradient background
+- Show ONLY ONE product centered on a clean, light gradient background
 - Add ANNOTATION ARROWS pointing to key features on the product
 - Include ICON LABELS next to each arrow with feature descriptions IN ENGLISH
 
@@ -82,15 +86,19 @@ Make the features visually clear and the annotations easy to read.`,
 
 ⚠️ ALL TEXT ON THE IMAGE MUST BE IN ENGLISH. Translate any non-English content to English.
 
+🔒 CRITICAL — SINGLE PRODUCT ONLY: Show ONLY ONE product. Do NOT show two or more copies of the product. If you want to show different sides/angles, use a MAGNIFYING GLASS or ZOOM CIRCLE overlay on the SAME single product — do NOT place multiple separate products side by side.
+
+🔒 PRODUCT FIDELITY RULE: The product must look EXACTLY like the reference photos — same shape, color shade, texture, material, stitching pattern. Do NOT change the product color or appearance.
+
 LAYOUT:
-- Show a dramatic close-up of the product focusing on material quality and craftsmanship
-- Include a MAGNIFYING GLASS or ZOOM CIRCLE effect highlighting a key detail area
-- The zoom area should clearly show the ${materials} texture
+- Show ONE product with a dramatic close-up perspective
+- Use a MAGNIFYING GLASS or ZOOM CIRCLE effect on part of the product to highlight material detail
+- The zoom area should clearly show the ${materials} texture, stitching, or craftsmanship
 
 TEXT ELEMENTS (ALL IN ENGLISH):
 - Header: "PREMIUM ${materials.toUpperCase()} QUALITY" or similar English text
 - Sub-text highlighting durability and craftsmanship in English
-- Icon labels in English: material type, quality certification if applicable
+- 2-3 small icon labels in English describing material properties
 
 STYLE:
 - Dramatic side lighting to emphasize surface texture
@@ -100,7 +108,7 @@ STYLE:
 - CRITICAL: Maintain REALISTIC product size proportions
 - 800x800px, commercial product photography quality
 - ALL text MUST be in ENGLISH only
-- Do NOT add dimension lines or measurement annotations - this is a DETAIL image, not a dimensions image`,
+- Do NOT add dimension lines or measurement annotations`,
         };
 
       case "dimensions":
@@ -111,6 +119,8 @@ STYLE:
           prompt: `Create a DIMENSIONS & SIZE REFERENCE image for this ${productName} for Amazon listing.
 
 ⚠️ ALL TEXT ON THE IMAGE MUST BE IN ENGLISH. Translate any non-English content to English.
+
+🔒 PRODUCT FIDELITY RULE: The product must look EXACTLY like the reference photos. Show ONLY ONE product.
 
 LAYOUT:
 - Product shown clearly on a clean white/light gray background
@@ -143,6 +153,10 @@ STYLE:
 
 ⚠️ ALL TEXT ON THE IMAGE MUST BE IN ENGLISH. If any text below is in Chinese or another language, translate it to English for the image.
 
+🔒 PRODUCT FIDELITY RULE: The product in this scene must look EXACTLY like the reference photos — same shape, color, texture, material. Do NOT alter, redesign, or change the product appearance. The product must be visually identical to the reference.
+
+🔒 CORRECT USAGE RULE: Show the product being used in its CORRECT, INTENDED way. Study the reference images to understand HOW this product is meant to be used. For example: if it's a glove, it must be WORN on the hand; if it's a tool, it must be HELD properly; if it's clothing, it must be WORN correctly. Do NOT show the product being used incorrectly.
+
 SCENE: ${scene1}
 TARGET AUDIENCE: ${audience1}
 
@@ -152,23 +166,23 @@ Think about what problems or frustrations the target customer (${audience1}) fac
 KEY SELLING POINT to emphasize: "${sp1}" (translate to English if not already)
 Additional benefits: "${sp2}", "${sp3}" (translate to English if not already)
 
-The image should give the customer a compelling reason to BUY NOW - show the transformation, the convenience, the joy of using this product.
+The image should give the customer a compelling reason to BUY NOW.
 
 REQUIREMENTS:
-- Show the product being ACTIVELY USED in a realistic ${scene1} setting
+- Show the product being ACTIVELY and CORRECTLY USED in a realistic ${scene1} setting
 - The product must be the CLEAR FOCAL POINT of the image
-- Product must be NATURALLY INTEGRATED into the scene - correct perspective, matching lighting, realistic shadows
-- CRITICAL: Maintain REALISTIC product size proportions - do not exaggerate the product size
+- Product must be NATURALLY INTEGRATED into the scene
+- CRITICAL: Maintain REALISTIC product size proportions
 - Warm, inviting atmosphere with natural ambient lighting
-- The scene should feel authentic and aspirational
-- Show EMOTION - a satisfied user, a problem being solved, life made easier
+- Show EMOTION - a satisfied ADULT user, a problem being solved
+- Only show ADULTS (18+ years old) — NO children, babies, or minors
 - Any text overlays MUST be in ENGLISH only
 
 STYLE:
 - Lifestyle magazine quality photography
 - Natural, warm color tones
-- The product should look like it BELONGS in the scene, not photoshopped in
-- Show the BENEFIT and RESULT of using the product, not just the product itself
+- The product should look like it BELONGS in the scene
+- Show the BENEFIT and RESULT of using the product
 - 800x800px, editorial photography quality
 - ALL text MUST be in ENGLISH only
 - Do NOT add dimension lines or measurement annotations on this image`,
@@ -188,8 +202,10 @@ You MUST ONLY show items that are CLEARLY VISIBLE in the reference product image
 - Do NOT invent, imagine, add, or fabricate ANY accessories, cables, manuals, user guides, boxes, bags, straps, tools, adapters, chargers, or ANY other items
 - Do NOT add items that "typically come with" this type of product
 - Do NOT assume what might be in the package
-- If only the main product is visible in the reference images, show ONLY the main product
-- Count the items in the reference images — the generated image must contain the EXACT SAME items, nothing more, nothing less
+- If only the main product is visible in the reference images, show ONLY the main product — just ONE single item in the center
+- Count the items in the reference images — the generated image must contain the EXACT SAME number of items, nothing more, nothing less
+
+🔒 PRODUCT FIDELITY RULE: The product must look EXACTLY like the reference photos — same shape, color, texture, material.
 
 LAYOUT:
 - Overhead / bird's eye view flat-lay arrangement
@@ -222,14 +238,18 @@ STYLE:
 
 ⚠️ ALL TEXT ON THE IMAGE MUST BE IN ENGLISH. If any text below is in Chinese or another language, translate it to English for the image.
 
+🔒 PRODUCT FIDELITY RULE: The product in EVERY scene must look EXACTLY like the reference photos — same shape, color, texture, material. Do NOT alter, redesign, or change the product appearance in any scene.
+
+🔒 CORRECT USAGE RULE: In EVERY scene, the product must be used in its CORRECT, INTENDED way. Study the reference images to understand the proper usage method. For example: if it's a glove/mitt, it must be WORN on the hand in every scene; if it's a tool, it must be HELD and used properly. NEVER show the product being used incorrectly (e.g., don't show a glove lying flat being pushed across a surface — it should be WORN).
+
 MARKETING STRATEGY:
-Show DIVERSE, RICH usage scenarios that appeal to DIFFERENT customer segments. Each scene should answer the customer's question: "How will this product fit into MY life?"
+Show DIVERSE, RICH usage scenarios that appeal to DIFFERENT customer segments. Each scene should answer: "How will this product fit into MY life?"
 
 Target audiences: ${audience1}, ${audience2} (translate to English if not already)
 Product strengths: ${sp1}, ${sp2}, ${sp3} (translate to English if not already)
 
 LAYOUT:
-- Show the product being used in MULTIPLE different scenarios
+- Show the product being CORRECTLY used in MULTIPLE different scenarios
 - Use a clean split-image layout (2-4 scenes)
 - Each scenario should target a DIFFERENT customer type or situation
 - Scenes should feel diverse and rich - different locations, times of day, activities
@@ -238,12 +258,13 @@ DIVERSE SCENARIOS TO SHOW:
 1. ${scene1} - showing how it solves a daily problem
 2. ${scene2} - showing a different use case or user type
 3. A creative or unexpected use that adds extra value
-4. Optional: a before/after or comparison that shows the product advantage
+4. Optional: storage, maintenance, or portability advantage
 
 REQUIREMENTS:
 - CRITICAL: Maintain REALISTIC product size proportions in every scene
 - Each scene should tell a mini-story about WHY the customer needs this product
-- Show real people benefiting from the product
+- Show ADULT people (18+ only) benefiting from the product — NO children, babies, or minors
+- The product must be used CORRECTLY in every scene
 - Diverse settings: home, outdoor, work, travel, etc.
 - Any text overlays or labels MUST be in ENGLISH only
 
