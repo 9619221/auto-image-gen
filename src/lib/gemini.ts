@@ -16,28 +16,30 @@ function buildAnalysisPrompt(imageCount: number, productMode: string): string {
   let modeNote = "";
 
   if (imageCount > 1 && productMode === "single") {
-    modeNote = `\n⚠️ 重要：用户上传了 ${imageCount} 张图片，但这些都是【同一个商品】的不同角度照片。请将它们视为同一件单品来分析，不要误判为多件商品或套装。productName 应该只描述这一个商品。`;
+    modeNote = `\n⚠️ IMPORTANT: The user uploaded ${imageCount} images, but these are ALL photos of the SAME SINGLE product from different angles. Analyze them as ONE product. productName should describe only this one product.`;
   } else if (imageCount > 1 && productMode === "bundle") {
-    modeNote = `\n重要：你看到的是 ${imageCount} 张不同商品的图片。这些商品作为组合装/套装一起销售。请将整个套装作为一个 listing 来分析——productName 应描述整个套装，sellingPoints 应涵盖组合价值，usageScenes 应展示这些商品如何搭配使用。`;
+    modeNote = `\nIMPORTANT: You see ${imageCount} images of different products. These are sold together as a BUNDLE SET. Analyze the entire set as one listing — productName should describe the bundle, sellingPoints should cover the combination value, usageScenes should show how these items work together.`;
   }
 
-  return `你是一位专业的电商产品分析师。分析商品图片，提取以下信息并以 JSON 格式返回。所有输出必须使用中文。${modeNote}
+  return `You are a professional e-commerce product analyst. Analyze the product images and extract the following information. Return ONLY valid JSON.
 
-仅返回有效的 JSON，结构如下：
+🚨 CRITICAL: ALL output text MUST be in ENGLISH. Do NOT use Chinese or any other language. Every field value must be written in English.${modeNote}
+
+Return ONLY valid JSON with this structure:
 {
-  "productName": "简洁的商品名称${imageCount > 1 && productMode === "bundle" ? "（描述套装组合）" : ""}",
-  "category": "商品类目（如：厨房电器、户外装备、电子产品）",
-  "sellingPoints": ["卖点1", "卖点2", "卖点3", "卖点4", "卖点5"],
-  "materials": "材质描述（如：不锈钢、食品级PP塑料）",
-  "colors": "颜色描述（如：哑光黑配银色点缀）",
-  "targetAudience": ["目标人群1", "目标人群2", "目标人群3"],
-  "usageScenes": ["场景1描述", "场景2描述", "场景3描述", "场景4描述", "场景5描述"],
-  "estimatedDimensions": "预估尺寸（如：30 x 20 x 15 厘米）"
+  "productName": "Concise product name in English${imageCount > 1 && productMode === "bundle" ? " (describe the bundle)" : ""}",
+  "category": "Product category in English (e.g., Kitchen Appliances, Outdoor Gear, Electronics)",
+  "sellingPoints": ["Selling point 1", "Selling point 2", "Selling point 3", "Selling point 4", "Selling point 5"],
+  "materials": "Material description in English (e.g., Stainless Steel, Food-Grade PP Plastic)",
+  "colors": "Color description in English (e.g., Matte Black with Silver Accents)",
+  "targetAudience": ["Target audience 1", "Target audience 2", "Target audience 3"],
+  "usageScenes": ["Scene 1 description", "Scene 2 description", "Scene 3 description", "Scene 4 description", "Scene 5 description"],
+  "estimatedDimensions": "Estimated dimensions (e.g., 30 x 20 x 15 cm / 11.8 x 7.9 x 5.9 in)"
 }
 
-卖点：提取3-5个核心功能、优势和独特卖点。
-目标人群：识别3个不同的买家画像。
-使用场景：描述5个多样化的、具体的真实使用场景，要生动具体（如"一位上班族妈妈在阳台上晾晒宝宝的小衣服和袜子"，而不是"晾衣服"）。`;
+Selling Points: Extract 3-5 core features, advantages, and unique selling points.
+Target Audience: Identify 3 different buyer personas.
+Usage Scenes: Describe 5 diverse, specific, vivid real-world usage scenarios (e.g., "A busy professional organizing keys, wallet and sunglasses on the entryway table after coming home" instead of just "organizing items").`;
 }
 
 export async function analyzeProduct(
