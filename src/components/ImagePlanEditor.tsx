@@ -23,12 +23,12 @@ export default function ImagePlanEditor({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-      <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-        <FileImage className="w-5 h-5 text-blue-500" />
+    <div className="premium-card p-6 space-y-4">
+      <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+        <FileImage className="w-5 h-5 text-indigo-500" />
         图片生成方案
       </h3>
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-slate-400">
         AI 已为每张图片制定了生成方案，你可以编辑描述来调整生成效果。
       </p>
 
@@ -36,43 +36,43 @@ export default function ImagePlanEditor({
         {plans.map((plan, idx) => (
           <div
             key={plan.imageType}
-            className="border border-gray-200 rounded-lg overflow-hidden"
+            className="border border-[var(--color-border-subtle)] rounded-xl overflow-hidden hover:border-[var(--color-border-default)] transition-colors"
           >
             {/* Header - always visible */}
             <button
               onClick={() => setExpandedIdx(expandedIdx === idx ? null : idx)}
-              className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors text-left"
+              className="w-full flex items-center justify-between p-4 hover:bg-[var(--color-surface-raised)] transition-colors text-left"
             >
               <div className="flex items-center gap-3">
-                <span className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center">
+                <span className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-white text-xs font-bold flex items-center justify-center shadow-sm">
                   {idx + 1}
                 </span>
                 <div>
-                  <span className="text-sm font-medium text-gray-800">
+                  <span className="text-sm font-medium text-slate-800">
                     {IMAGE_TYPE_LABELS[plan.imageType]}
                   </span>
-                  <span className="text-xs text-gray-400 ml-2">
+                  <span className="text-xs text-slate-400 ml-2">
                     {plan.title}
                   </span>
                 </div>
               </div>
               {expandedIdx === idx ? (
-                <ChevronUp className="w-4 h-4 text-gray-400" />
+                <ChevronUp className="w-4 h-4 text-slate-400" />
               ) : (
-                <ChevronDown className="w-4 h-4 text-gray-400" />
+                <ChevronDown className="w-4 h-4 text-slate-400" />
               )}
             </button>
 
             {/* Description - always visible as summary */}
             <div className="px-4 pb-3">
-              <p className="text-sm text-gray-600">{plan.description}</p>
+              <p className="text-sm text-slate-500">{plan.description}</p>
             </div>
 
             {/* Expanded: editable fields */}
             {expandedIdx === idx && (
-              <div className="px-4 pb-4 space-y-3 border-t border-gray-100 pt-3">
+              <div className="px-4 pb-4 space-y-3 border-t border-[var(--color-border-subtle)] pt-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                  <label className="block text-xs uppercase tracking-wide font-medium text-slate-400 mb-1">
                     方案描述（中文）
                   </label>
                   <textarea
@@ -81,11 +81,11 @@ export default function ImagePlanEditor({
                       updatePlan(idx, "description", e.target.value)
                     }
                     rows={2}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+                    className="input-premium resize-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                  <label className="block text-xs uppercase tracking-wide font-medium text-slate-400 mb-1">
                     生成提示词（英文，发送给 AI）
                   </label>
                   <textarea
@@ -94,7 +94,7 @@ export default function ImagePlanEditor({
                       updatePlan(idx, "prompt", e.target.value)
                     }
                     rows={4}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none text-gray-600"
+                    className="input-premium resize-none font-mono text-xs text-slate-500"
                   />
                 </div>
               </div>

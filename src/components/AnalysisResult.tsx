@@ -1,7 +1,7 @@
 "use client";
 
 import type { AnalysisResult as AnalysisResultType } from "@/lib/types";
-import { Package, Users, MapPin, Ruler, Palette, Sparkles } from "lucide-react";
+import { Package, Users, MapPin, Ruler, Palette, Sparkles, Pencil, Plus, X } from "lucide-react";
 
 interface AnalysisResultProps {
   analysis: AnalysisResultType;
@@ -29,36 +29,52 @@ export default function AnalysisResult({
     onChange({ ...analysis, [key]: arr });
   };
 
+  const addArrayItem = (key: "sellingPoints" | "targetAudience" | "usageScenes") => {
+    const arr = [...analysis[key], ""];
+    onChange({ ...analysis, [key]: arr });
+  };
+
+  const removeArrayItem = (key: "sellingPoints" | "targetAudience" | "usageScenes", index: number) => {
+    const arr = analysis[key].filter((_, i) => i !== index);
+    onChange({ ...analysis, [key]: arr });
+  };
+
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
-      <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-        <Sparkles className="w-5 h-5 text-amber-500" />
-        AI 分析结果
-      </h3>
+    <div className="premium-card p-6 space-y-5">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-amber-500" />
+          AI 分析结果
+        </h3>
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-600 text-xs font-medium border border-amber-200">
+          <Pencil className="w-3 h-3" />
+          所有字段均可修改校准
+        </span>
+      </div>
 
       {/* Product Name & Category */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-600 mb-1">
-            <Package className="w-4 h-4 inline mr-1" />
+          <label className="block text-xs uppercase tracking-wide font-medium text-slate-400 mb-1.5">
+            <Package className="w-3.5 h-3.5 inline mr-1" />
             商品名称
           </label>
           <input
             type="text"
             value={analysis.productName}
             onChange={(e) => updateField("productName", e.target.value)}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            className="input-premium"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-600 mb-1">
+          <label className="block text-xs uppercase tracking-wide font-medium text-slate-400 mb-1.5">
             商品类目
           </label>
           <input
             type="text"
             value={analysis.category}
             onChange={(e) => updateField("category", e.target.value)}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            className="input-premium"
           />
         </div>
       </div>
@@ -66,104 +82,158 @@ export default function AnalysisResult({
       {/* Materials & Colors & Dimensions */}
       <div className="grid grid-cols-3 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-600 mb-1">
+          <label className="block text-xs uppercase tracking-wide font-medium text-slate-400 mb-1.5">
             材质
           </label>
           <input
             type="text"
             value={analysis.materials}
             onChange={(e) => updateField("materials", e.target.value)}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            className="input-premium"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-600 mb-1">
-            <Palette className="w-4 h-4 inline mr-1" />
+          <label className="block text-xs uppercase tracking-wide font-medium text-slate-400 mb-1.5">
+            <Palette className="w-3.5 h-3.5 inline mr-1" />
             颜色
           </label>
           <input
             type="text"
             value={analysis.colors}
             onChange={(e) => updateField("colors", e.target.value)}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            className="input-premium"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-600 mb-1">
-            <Ruler className="w-4 h-4 inline mr-1" />
+          <label className="block text-xs uppercase tracking-wide font-medium text-slate-400 mb-1.5">
+            <Ruler className="w-3.5 h-3.5 inline mr-1" />
             尺寸
           </label>
           <input
             type="text"
             value={analysis.estimatedDimensions}
             onChange={(e) => updateField("estimatedDimensions", e.target.value)}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+            className="input-premium"
           />
         </div>
       </div>
 
       {/* Selling Points */}
       <div>
-        <label className="block text-sm font-medium text-gray-600 mb-2">
-          <Sparkles className="w-4 h-4 inline mr-1" />
-          核心卖点
-        </label>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-xs uppercase tracking-wide font-medium text-slate-400 flex items-center">
+            <Sparkles className="w-3.5 h-3.5 mr-1" />
+            核心卖点
+          </label>
+          <button
+            onClick={() => addArrayItem("sellingPoints")}
+            className="inline-flex items-center gap-1 text-xs text-indigo-500 hover:text-indigo-700 font-medium transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            添加
+          </button>
+        </div>
         <div className="space-y-2">
           {analysis.sellingPoints.map((sp, i) => (
-            <input
-              key={i}
-              type="text"
-              value={sp}
-              onChange={(e) =>
-                updateArrayItem("sellingPoints", i, e.target.value)
-              }
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              placeholder={`卖点 ${i + 1}`}
-            />
+            <div key={i} className="flex items-center gap-2">
+              <input
+                type="text"
+                value={sp}
+                onChange={(e) =>
+                  updateArrayItem("sellingPoints", i, e.target.value)
+                }
+                className="input-premium flex-1"
+                placeholder={`卖点 ${i + 1}`}
+              />
+              {analysis.sellingPoints.length > 1 && (
+                <button
+                  onClick={() => removeArrayItem("sellingPoints", i)}
+                  className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           ))}
         </div>
       </div>
 
       {/* Target Audience */}
       <div>
-        <label className="block text-sm font-medium text-gray-600 mb-2">
-          <Users className="w-4 h-4 inline mr-1" />
-          目标人群
-        </label>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-xs uppercase tracking-wide font-medium text-slate-400 flex items-center">
+            <Users className="w-3.5 h-3.5 mr-1" />
+            目标人群
+          </label>
+          <button
+            onClick={() => addArrayItem("targetAudience")}
+            className="inline-flex items-center gap-1 text-xs text-indigo-500 hover:text-indigo-700 font-medium transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            添加
+          </button>
+        </div>
         <div className="space-y-2">
           {analysis.targetAudience.map((ta, i) => (
-            <input
-              key={i}
-              type="text"
-              value={ta}
-              onChange={(e) =>
-                updateArrayItem("targetAudience", i, e.target.value)
-              }
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              placeholder={`人群 ${i + 1}`}
-            />
+            <div key={i} className="flex items-center gap-2">
+              <input
+                type="text"
+                value={ta}
+                onChange={(e) =>
+                  updateArrayItem("targetAudience", i, e.target.value)
+                }
+                className="input-premium flex-1"
+                placeholder={`人群 ${i + 1}`}
+              />
+              {analysis.targetAudience.length > 1 && (
+                <button
+                  onClick={() => removeArrayItem("targetAudience", i)}
+                  className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           ))}
         </div>
       </div>
 
       {/* Usage Scenes */}
       <div>
-        <label className="block text-sm font-medium text-gray-600 mb-2">
-          <MapPin className="w-4 h-4 inline mr-1" />
-          使用场景
-        </label>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-xs uppercase tracking-wide font-medium text-slate-400 flex items-center">
+            <MapPin className="w-3.5 h-3.5 mr-1" />
+            使用场景
+          </label>
+          <button
+            onClick={() => addArrayItem("usageScenes")}
+            className="inline-flex items-center gap-1 text-xs text-indigo-500 hover:text-indigo-700 font-medium transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            添加
+          </button>
+        </div>
         <div className="space-y-2">
           {analysis.usageScenes.map((us, i) => (
-            <textarea
-              key={i}
-              value={us}
-              onChange={(e) =>
-                updateArrayItem("usageScenes", i, e.target.value)
-              }
-              rows={2}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
-              placeholder={`场景 ${i + 1}`}
-            />
+            <div key={i} className="flex items-start gap-2">
+              <textarea
+                value={us}
+                onChange={(e) =>
+                  updateArrayItem("usageScenes", i, e.target.value)
+                }
+                rows={2}
+                className="input-premium resize-none flex-1"
+                placeholder={`场景 ${i + 1}`}
+              />
+              {analysis.usageScenes.length > 1 && (
+                <button
+                  onClick={() => removeArrayItem("usageScenes", i)}
+                  className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors mt-2"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           ))}
         </div>
       </div>

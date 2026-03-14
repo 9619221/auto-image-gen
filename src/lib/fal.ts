@@ -1,17 +1,17 @@
 import OpenAI from "openai";
 
 function getClient() {
-  const apiKey = process.env.LLM_API_KEY || process.env.OPENAI_API_KEY;
+  const apiKey = process.env.GENERATE_API_KEY;
   if (!apiKey) {
-    throw new Error("未配置 API Key，请设置环境变量 LLM_API_KEY");
+    throw new Error("未配置生图 API Key，请设置环境变量 GENERATE_API_KEY");
   }
   return new OpenAI({
     apiKey,
-    baseURL: process.env.LLM_BASE_URL,
+    baseURL: process.env.GENERATE_BASE_URL,
   });
 }
 
-const MODEL = "gemini-3.1-flash-image-preview";
+const MODEL = process.env.GENERATE_MODEL || "gemini-3.1-flash-image-preview";
 
 function extractImageBase64(content: string): string | null {
   const match = content.match(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/);
@@ -37,7 +37,11 @@ export async function generateProductImage(
       ? `\n\nIMPORTANT: You are given ${productImages.length} different product reference images. These products are sold together as a BUNDLE SET. ALL ${productImages.length} products MUST appear together in the generated image. Do NOT omit any product.\n\n`
       : "";
 
-  content.push({ type: "text", text: multiNote + prompt });
+  const englishRuleBefore = "\n\nCRITICAL LANGUAGE RULE: ALL text, labels, annotations, headers, and any written content on the generated image MUST be in ENGLISH ONLY. No Chinese characters (中文) should appear anywhere in the generated image. If any part of the prompt below contains Chinese text, you MUST translate it to English before rendering it on the image.\n\n";
+
+  const englishRuleAfter = "\n\n⚠️ FINAL REMINDER — ENGLISH ONLY: Every single piece of text rendered on this image MUST be in English. Do NOT write any Chinese characters (中文/汉字) anywhere on the image. This includes headers, labels, annotations, captions, feature descriptions, and any other visible text. Translate all Chinese content to English. This is a STRICT requirement.";
+
+  content.push({ type: "text", text: multiNote + englishRuleBefore + prompt + englishRuleAfter });
 
   const response = await getClient().chat.completions.create({
     model: MODEL,

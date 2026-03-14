@@ -24,22 +24,22 @@ export default function ImageTypeSelector({
   const deselectAll = () => onChange([]);
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6">
+    <div className="premium-card p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-bold text-gray-900">
+        <h3 className="text-lg font-bold text-slate-900">
           选择要生成的图片类型
         </h3>
         <div className="flex gap-2 text-sm">
           <button
             onClick={selectAll}
-            className="text-blue-600 hover:underline"
+            className="text-indigo-500 hover:text-indigo-700 transition-colors"
           >
             全选
           </button>
-          <span className="text-gray-300">|</span>
+          <span className="text-slate-200">|</span>
           <button
             onClick={deselectAll}
-            className="text-gray-500 hover:underline"
+            className="text-slate-400 hover:text-slate-600 transition-colors"
           >
             取消全选
           </button>
@@ -50,18 +50,18 @@ export default function ImageTypeSelector({
           <button
             key={type}
             onClick={() => toggle(type)}
-            className={`relative p-4 rounded-lg border-2 text-left transition-all ${
+            className={`relative p-4 rounded-xl border-2 text-left transition-all ${
               selected.includes(type)
-                ? "border-blue-500 bg-blue-50"
-                : "border-gray-200 hover:border-gray-300"
+                ? "border-indigo-500 bg-gradient-to-br from-[var(--color-accent-subtle)] to-violet-50 ring-1 ring-indigo-200"
+                : "border-[var(--color-border-subtle)] hover:border-indigo-300"
             }`}
           >
-            <div className="text-xs text-gray-400 mb-1">#{idx + 1}</div>
-            <div className="text-sm font-medium text-gray-800">
+            <div className="text-xs text-slate-400 mb-1">#{idx + 1}</div>
+            <div className="text-sm font-medium text-slate-800">
               {IMAGE_TYPE_LABELS[type]}
             </div>
             {selected.includes(type) && (
-              <div className="absolute top-2 right-2 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+              <div className="absolute top-2 right-2 w-5 h-5 bg-gradient-to-br from-indigo-500 to-violet-500 rounded-full flex items-center justify-center shadow-md">
                 <svg
                   className="w-3 h-3 text-white"
                   fill="none"

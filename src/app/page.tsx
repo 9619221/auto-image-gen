@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import ImageUploader from "@/components/ImageUploader";
+import type { ProductMode } from "@/components/ImageUploader";
 import AnalysisResultComponent from "@/components/AnalysisResult";
 import ImageTypeSelector from "@/components/ImageTypeSelector";
 import ImagePlanEditor from "@/components/ImagePlanEditor";
@@ -24,6 +25,7 @@ export default function Home() {
   const [plans, setPlans] = useState<ImagePlan[]>([]);
   const [jobs, setJobs] = useState<GenerationJob[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [productMode, setProductMode] = useState<ProductMode>("single");
   const [error, setError] = useState<string | null>(null);
 
   const handleAnalyze = useCallback(async () => {
@@ -35,7 +37,7 @@ export default function Home() {
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ images: originalImages }),
+        body: JSON.stringify({ images: originalImages, productMode }),
       });
       const data = await res.json();
 
@@ -60,7 +62,7 @@ export default function Home() {
     } finally {
       setIsProcessing(false);
     }
-  }, [originalImages]);
+  }, [originalImages, productMode]);
 
   const handleProceedToPlan = useCallback(() => {
     if (!analysis) return;
@@ -142,25 +144,26 @@ export default function Home() {
     setJobs([]);
     setError(null);
     setSelectedTypes([...IMAGE_TYPE_ORDER]);
+    setProductMode("single");
   };
 
   return (
     <main className="min-h-screen">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+      <header className="glass-card sticky top-0 z-50 border-b border-[var(--color-border-subtle)]">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-gray-900">
+            <h1 className="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">
               亚马逊商品图片生成器
             </h1>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-slate-400">
               上传商品照片 &rarr; AI 自动生成 7 张 listing 图片
             </p>
           </div>
           {step !== "upload" && (
             <button
               onClick={handleReset}
-              className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              className="btn-ghost flex items-center gap-2 px-4 py-2 text-sm"
             >
               <RotateCcw className="w-4 h-4" />
               重新开始
@@ -184,14 +187,14 @@ export default function Home() {
             const itemIdx = stepOrder.indexOf(s.key);
             return (
               <div key={s.key} className="flex items-center gap-2">
-                {i > 0 && <div className="w-8 h-px bg-gray-300" />}
+                {i > 0 && <div className="w-8 h-px bg-slate-200" />}
                 <span
-                  className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
                     currentIdx === itemIdx
-                      ? "bg-blue-100 text-blue-700"
+                      ? "bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow-md shadow-indigo-200"
                       : currentIdx > itemIdx
-                      ? "bg-green-100 text-green-700"
-                      : "bg-gray-100 text-gray-500"
+                      ? "bg-emerald-100 text-emerald-700"
+                      : "bg-slate-100 text-slate-400"
                   }`}
                 >
                   {s.label}
@@ -205,21 +208,23 @@ export default function Home() {
       {/* Content */}
       <div className="max-w-6xl mx-auto px-6 pb-12 space-y-6">
         {error && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+          <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-sm animate-fade-in-up">
             {error}
           </div>
         )}
 
         {/* Step 1: Upload */}
         {step === "upload" && (
-          <div className="max-w-2xl mx-auto">
+          <div className="max-w-2xl mx-auto animate-fade-in-up">
             <ImageUploader
               images={originalImages}
               onImagesChange={setOriginalImages}
               isProcessing={isProcessing}
               onSubmit={handleAnalyze}
+              productMode={productMode}
+              onProductModeChange={setProductMode}
             />
-            <p className="text-center text-xs text-gray-400 mt-4">
+            <p className="text-center text-xs text-slate-400 mt-4">
               上传 1-5 张商品图，支持组合装/套装多商品
             </p>
           </div>
@@ -227,10 +232,10 @@ export default function Home() {
 
         {/* Step 2: Review analysis + select types */}
         {step === "review" && analysis && (
-          <>
+          <div className="animate-fade-in-up space-y-6">
             {originalImages.length > 0 && (
-              <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <p className="text-xs text-gray-400 mb-2">
+              <div className="premium-card p-6">
+                <p className="text-xs uppercase tracking-wide text-slate-400 mb-2">
                   上传的商品图（{originalImages.length} 张）
                 </p>
                 <div className="flex gap-3 flex-wrap">
@@ -239,7 +244,7 @@ export default function Home() {
                       key={idx}
                       src={img}
                       alt={`商品 ${idx + 1}`}
-                      className="w-28 h-28 object-contain rounded-lg border"
+                      className="w-28 h-28 object-contain rounded-xl border border-[var(--color-border-subtle)] hover:shadow-lg transition-shadow"
                     />
                   ))}
                 </div>
@@ -260,45 +265,45 @@ export default function Home() {
               <button
                 onClick={handleProceedToPlan}
                 disabled={selectedTypes.length === 0}
-                className="flex items-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-200"
+                className="btn-accent flex items-center gap-2 px-8 py-3 text-lg"
               >
                 <ArrowRight className="w-5 h-5" />
                 生成方案（{selectedTypes.length} 张图）
               </button>
             </div>
-          </>
+          </div>
         )}
 
         {/* Step 3: Plan review */}
         {step === "plan" && plans.length > 0 && (
-          <>
+          <div className="animate-fade-in-up space-y-6">
             <ImagePlanEditor plans={plans} onChange={setPlans} />
 
             <div className="flex justify-center gap-4">
               <button
                 onClick={() => setStep("review")}
-                className="flex items-center gap-2 px-6 py-3 text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+                className="btn-ghost flex items-center gap-2 px-6 py-3"
               >
                 返回修改
               </button>
               <button
                 onClick={handleGenerate}
-                className="flex items-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-lg font-semibold shadow-lg shadow-blue-200"
+                className="btn-accent flex items-center gap-2 px-8 py-3 text-lg"
               >
                 <Zap className="w-5 h-5" />
                 开始生成 {plans.length} 张图片
               </button>
             </div>
-          </>
+          </div>
         )}
 
         {/* Step 4 & 5: Generation progress + Results */}
         {(step === "generate" || step === "results") && (
-          <>
+          <div className="animate-fade-in-up space-y-6">
             {isGenerating && (
               <div className="flex items-center justify-center gap-3 py-4">
-                <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
-                <span className="text-blue-600 font-medium">
+                <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+                <span className="text-indigo-600 font-medium">
                   正在生成图片... (
                   {jobs.filter((j) => j.status === "done").length}/
                   {jobs.length})
@@ -310,7 +315,7 @@ export default function Home() {
               jobs={jobs}
               productName={analysis?.productName || "商品"}
             />
-          </>
+          </div>
         )}
       </div>
     </main>

@@ -29,10 +29,11 @@ REQUIREMENTS:
 - Show the product from its best angle, clearly displaying its structure and design
 - Professional studio lighting with soft, even illumination
 - Sharp, crisp product edges
-- NO text, NO logos, NO watermarks, NO annotations, NO props
+- NO text, NO logos, NO watermarks, NO annotations, NO props, NO dimension lines or measurements
 - The product must look EXACTLY like the reference image - same shape, color, material, proportions
+- CRITICAL: Maintain the product's REAL-WORLD size proportions. Do NOT exaggerate or distort the product dimensions
 - High-end commercial e-commerce photography quality
-- 1500x1500px square format
+- 800x800px square format
 
 This is the HERO image - it must be clean, professional, and make the product look premium.`,
         };
@@ -44,26 +45,31 @@ This is the HERO image - it must be clean, professional, and make the product lo
           description: `展示${productName}的核心功能：${sp1}、${sp2}、${sp3}，带有功能标注箭头和图标说明。`,
           prompt: `Create a product FEATURE SHOWCASE image for this ${productName} for Amazon listing.
 
+⚠️ ALL TEXT ON THE IMAGE MUST BE IN ENGLISH. If any feature description below is in Chinese or another language, translate it to English before writing it on the image.
+
 LAYOUT:
 - Product centered on a clean, light gradient background
 - Add ANNOTATION ARROWS pointing to key features on the product
-- Include ICON LABELS next to each arrow with feature descriptions
+- Include ICON LABELS next to each arrow with feature descriptions IN ENGLISH
 
-KEY FEATURES TO HIGHLIGHT:
+KEY FEATURES TO HIGHLIGHT (translate to English if not already):
 1. "${sp1}" - with arrow pointing to the relevant product area
 2. "${sp2}" - with arrow pointing to the relevant area
 3. "${sp3}" - with arrow pointing to the relevant area
 
-HEADER TEXT at top: "${sp1}" (main selling point as headline)
-SUB-HEADER: key benefit description
+HEADER TEXT at top: English translation of "${sp1}" (main selling point as headline)
+SUB-HEADER: key benefit description IN ENGLISH
 
 STYLE:
 - Clean, modern infographic layout
 - Professional product photography with overlay annotations
 - Use clean icons and thin annotation lines/arrows
 - Colors: product-appropriate color scheme with ${colors} tones
-- Premium commercial quality, 1500x1500px
+- CRITICAL: Maintain REALISTIC product size proportions - do not exaggerate dimensions
+- Premium commercial quality, 800x800px
+- ALL text, labels, headers MUST be in ENGLISH only
 
+Do NOT add dimension lines, measurement annotations, or size specifications. Focus ONLY on features and selling points.
 Make the features visually clear and the annotations easy to read.`,
         };
 
@@ -74,22 +80,27 @@ Make the features visually clear and the annotations easy to read.`,
           description: `${productName}材质特写，展示${materials}的质感和工艺细节，配放大镜效果或局部截取。`,
           prompt: `Create a CLOSE-UP DETAIL image for this ${productName} for Amazon listing.
 
+⚠️ ALL TEXT ON THE IMAGE MUST BE IN ENGLISH. Translate any non-English content to English.
+
 LAYOUT:
 - Show a dramatic close-up of the product focusing on material quality and craftsmanship
 - Include a MAGNIFYING GLASS or ZOOM CIRCLE effect highlighting a key detail area
 - The zoom area should clearly show the ${materials} texture
 
-TEXT ELEMENTS:
-- Header: "PREMIUM ${materials.toUpperCase()} QUALITY" or similar
-- Sub-text highlighting durability and craftsmanship
-- Icon labels: material type, quality certification if applicable
+TEXT ELEMENTS (ALL IN ENGLISH):
+- Header: "PREMIUM ${materials.toUpperCase()} QUALITY" or similar English text
+- Sub-text highlighting durability and craftsmanship in English
+- Icon labels in English: material type, quality certification if applicable
 
 STYLE:
 - Dramatic side lighting to emphasize surface texture
 - Shallow depth of field for professional feel
 - Clean background (light gradient or subtle)
 - The detail shot should convince customers of premium build quality
-- 1500x1500px, commercial product photography quality`,
+- CRITICAL: Maintain REALISTIC product size proportions
+- 800x800px, commercial product photography quality
+- ALL text MUST be in ENGLISH only
+- Do NOT add dimension lines or measurement annotations - this is a DETAIL image, not a dimensions image`,
         };
 
       case "dimensions":
@@ -99,73 +110,91 @@ STYLE:
           description: `${productName}尺寸标注（${estimatedDimensions}），带测量线和数值，搭配实际使用参照物展示大小。`,
           prompt: `Create a DIMENSIONS & SIZE REFERENCE image for this ${productName} for Amazon listing.
 
-LAYOUT - TWO ZONES:
-TOP ZONE: Product with precise dimension annotation lines
-- Show measurement lines with arrows on both ends
-- Label dimensions: ${estimatedDimensions}
-- Clean, technical illustration style
+⚠️ ALL TEXT ON THE IMAGE MUST BE IN ENGLISH. Translate any non-English content to English.
 
-BOTTOM ZONE: Size reference / fit demonstration
-- Show the product in context to demonstrate actual size (e.g., held in hand, next to common objects, or in its intended placement)
-- Help customer understand real-world scale
+LAYOUT:
+- Product shown clearly on a clean white/light gray background
+- Add clear dimension annotation lines with arrows for all important measurements
+- Dimension values: ${estimatedDimensions}
+- Show measurement lines with arrows on both ends, clean technical style
+- Mark length, width, height, and any other key dimensions clearly
 
-TEXT ELEMENTS:
-- Header: "PRECISION FIT" or "PERFECT SIZE"
-- Dimension values clearly labeled
-- Sub-text about where it fits
+OPTIONAL: Size reference
+- If helpful, show a size reference (e.g., held in hand, next to common objects) to help customer understand real-world scale
+
+TEXT ELEMENTS (ALL IN ENGLISH):
+- Dimension values and units clearly labeled (e.g., "12.5 inches", "30 cm")
+- Optional header: "DIMENSIONS" or "SIZE GUIDE"
 
 STYLE:
-- Clean white/light gray background with subtle grid lines
+- Clean, professional technical illustration style
 - Technical but approachable design
-- Precise measurement annotations with dimension values
-- Professional quality, 1500x1500px`,
+- Precise measurement annotations with clear dimension values
+- Professional quality, 800x800px
+- ALL text MUST be in ENGLISH only`,
         };
 
       case "lifestyle":
         return {
           imageType,
-          title: "使用场景图 - 真实生活场景",
-          description: `${scene1}场景中的${productName}，面向${audience1}，产品自然融入环境，暖色调生活感。`,
-          prompt: `Create a LIFESTYLE SCENE image showing this ${productName} in real-world use for Amazon listing.
+          title: "使用场景图 - 痛点解决与购买理由",
+          description: `面向${audience1}，展示${productName}如何解决客户痛点。场景：${scene1}。突出产品卖点：${sp1}，给客户必须购买的理由。`,
+          prompt: `Create a LIFESTYLE SCENE image showing this ${productName} solving a real customer problem for Amazon listing.
+
+⚠️ ALL TEXT ON THE IMAGE MUST BE IN ENGLISH. If any text below is in Chinese or another language, translate it to English for the image.
 
 SCENE: ${scene1}
 TARGET AUDIENCE: ${audience1}
+
+MARKETING ANGLE - PAIN POINT & SOLUTION:
+Think about what problems or frustrations the target customer (${audience1}) faces BEFORE buying this product. Show how this product SOLVES that pain point and makes their life better.
+
+KEY SELLING POINT to emphasize: "${sp1}" (translate to English if not already)
+Additional benefits: "${sp2}", "${sp3}" (translate to English if not already)
+
+The image should give the customer a compelling reason to BUY NOW - show the transformation, the convenience, the joy of using this product.
 
 REQUIREMENTS:
 - Show the product being ACTIVELY USED in a realistic ${scene1} setting
 - The product must be the CLEAR FOCAL POINT of the image
 - Product must be NATURALLY INTEGRATED into the scene - correct perspective, matching lighting, realistic shadows
+- CRITICAL: Maintain REALISTIC product size proportions - do not exaggerate the product size
 - Warm, inviting atmosphere with natural ambient lighting
 - The scene should feel authentic and aspirational
-
-OPTIONAL TEXT (subtle):
-- Small lifestyle benefit text in corner if appropriate
+- Show EMOTION - a satisfied user, a problem being solved, life made easier
+- Any text overlays MUST be in ENGLISH only
 
 STYLE:
 - Lifestyle magazine quality photography
 - Natural, warm color tones
 - The product should look like it BELONGS in the scene, not photoshopped in
-- Show the BENEFIT of using the product, not just the product itself
-- 1500x1500px, editorial photography quality`,
+- Show the BENEFIT and RESULT of using the product, not just the product itself
+- 800x800px, editorial photography quality
+- ALL text MUST be in ENGLISH only
+- Do NOT add dimension lines or measurement annotations on this image`,
         };
 
       case "packaging":
         return {
           imageType,
           title: "包装配件图 - 开箱内容展示",
-          description: `${productName}完整包装内容物平铺展示，包含主品和所有配件，整齐排列，鸟瞰角度。`,
+          description: `${productName}包装内容展示，仅展示参考图中可见的物品，整齐排列，鸟瞰角度。`,
           prompt: `Create a PACKAGE CONTENTS / WHAT'S INCLUDED image for this ${productName} for Amazon listing.
+
+⚠️ ALL TEXT ON THE IMAGE MUST BE IN ENGLISH. Translate any non-English content to English.
+
+CRITICAL RULE: ONLY show items that are VISIBLE in the reference product images. Do NOT invent, add, or fabricate any accessories, attachments, manuals, cables, or other items that are not clearly shown in the reference images. If only the main product is shown in the reference images, then ONLY show the main product in a beautiful flat-lay arrangement.
 
 LAYOUT:
 - Overhead / bird's eye view flat-lay arrangement
 - Main product prominently in CENTER
-- All accessories and included items arranged neatly around the product
-- Each item clearly visible and labeled
+- ONLY arrange items that appear in the reference images
+- Each item clearly visible and labeled IN ENGLISH
+- Maintain REALISTIC size proportions between items
 
-TEXT ELEMENTS:
-- Header: "COMPLETE SET" or "WHAT'S INCLUDED"
-- Label each item with text annotations
-- Highlight any BONUS items or quantity (e.g., "x3", "60 pcs included")
+TEXT ELEMENTS (ALL IN ENGLISH):
+- Header: "WHAT'S INCLUDED"
+- Label each visible item with English text annotations
 
 STYLE:
 - Clean, light surface (white, light wood, or marble)
@@ -173,41 +202,54 @@ STYLE:
 - Soft, even lighting from above
 - Instagram-worthy organized layout
 - Premium unboxing experience feel
-- 1500x1500px, commercial photography quality
-
-Make customers feel they're getting great VALUE from the package contents.`,
+- 800x800px, commercial photography quality
+- ALL text MUST be in ENGLISH only
+- Do NOT add dimension lines or measurement annotations on this image`,
         };
 
       case "lifestyle2":
         return {
           imageType,
-          title: "多场景应用图 - 多功能展示",
-          description: `${productName}在不同场景中的应用：${scene2}，展示产品的多功能性和广泛适用性。`,
-          prompt: `Create a MULTI-USE / VERSATILE APPLICATION image for this ${productName} for Amazon listing.
+          title: "多场景应用图 - 多元化使用展示",
+          description: `${productName}在多种场景中的丰富应用，面向不同人群（${audience1}、${audience2}），展示多元化使用方式和购买价值。`,
+          prompt: `Create a MULTI-SCENARIO LIFESTYLE image for this ${productName} for Amazon listing.
+
+⚠️ ALL TEXT ON THE IMAGE MUST BE IN ENGLISH. If any text below is in Chinese or another language, translate it to English for the image.
+
+MARKETING STRATEGY:
+Show DIVERSE, RICH usage scenarios that appeal to DIFFERENT customer segments. Each scene should answer the customer's question: "How will this product fit into MY life?"
+
+Target audiences: ${audience1}, ${audience2} (translate to English if not already)
+Product strengths: ${sp1}, ${sp2}, ${sp3} (translate to English if not already)
 
 LAYOUT:
-- Show the product being used in MULTIPLE different scenarios or locations
-- Can use a split-image layout or embedded scene thumbnails
-- Each scenario should show a DIFFERENT use case
+- Show the product being used in MULTIPLE different scenarios
+- Use a clean split-image layout (2-4 scenes)
+- Each scenario should target a DIFFERENT customer type or situation
+- Scenes should feel diverse and rich - different locations, times of day, activities
 
-SCENARIOS TO SHOW:
-1. ${scene1} - primary use
-2. ${scene2} - secondary use
-3. Any other creative application
+DIVERSE SCENARIOS TO SHOW:
+1. ${scene1} - showing how it solves a daily problem
+2. ${scene2} - showing a different use case or user type
+3. A creative or unexpected use that adds extra value
+4. Optional: a before/after or comparison that shows the product advantage
 
-TEXT ELEMENTS:
-- Header: "VERSATILE & MULTI-USE" or "USE ANYWHERE"
-- Label each scenario/location
-- Icon labels for each use case
+REQUIREMENTS:
+- CRITICAL: Maintain REALISTIC product size proportions in every scene
+- Each scene should tell a mini-story about WHY the customer needs this product
+- Show real people benefiting from the product
+- Diverse settings: home, outdoor, work, travel, etc.
+- Any text overlays or labels MUST be in ENGLISH only
 
 STYLE:
 - Clean layout that clearly shows multiple applications
-- Each mini-scene should be realistic and well-lit
+- Each mini-scene should be realistic, warm, and well-lit
 - Product is clearly recognizable in each scene
-- Demonstrates VALUE through versatility
-- 1500x1500px, commercial quality
+- 800x800px, commercial quality
+- ALL text MUST be in ENGLISH only
+- Do NOT add dimension lines or measurement annotations on this image
 
-The goal is to show customers this product is useful in MANY situations, not just one.`,
+The goal is to make EVERY potential customer see themselves using this product.`,
         };
 
       default:
@@ -215,7 +257,7 @@ The goal is to show customers this product is useful in MANY situations, not jus
           imageType,
           title: IMAGE_TYPE_LABELS[imageType],
           description: `${productName}专业产品图`,
-          prompt: `Create a professional product photography image for this ${productName}. Clean background, professional studio lighting. Premium commercial feel. 1500x1500px.`,
+          prompt: `Create a professional product photography image for this ${productName}. Clean background, professional studio lighting. Premium commercial feel. 800x800px.`,
         };
     }
   });
