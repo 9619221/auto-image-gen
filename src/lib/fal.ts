@@ -42,15 +42,23 @@ export async function generateProductImage(
     }
   }
 
-  const englishRuleBefore = "\n\nCRITICAL LANGUAGE RULE: ALL text, labels, annotations, headers, and any written content on the generated image MUST be in ENGLISH ONLY. No Chinese characters (中文) should appear anywhere in the generated image. If any part of the prompt below contains Chinese text, you MUST translate it to English before rendering it on the image.\n\n";
+  const globalRules = `
 
-  const noChildrenRule = "\n\n🚫 STRICT RULE — NO MINORS: Do NOT include any babies, infants, toddlers, children, or underage persons in the generated image. If the scene requires showing people, use ONLY adults (18+ years old). This rule applies to ALL image types with no exceptions.\n\n";
+🚨🚨🚨 MANDATORY RULES — READ BEFORE GENERATING 🚨🚨🚨
 
-  const noBrandRule = "\n\n🚫 STRICT RULE — NO BRAND LOGOS: Do NOT include any real brand names, logos, or trademarks in the generated image (e.g., Coca-Cola, Nike, Apple, Samsung, etc.). If the scene needs to show items like bottles, cups, phones, etc., use GENERIC unbranded versions only. This avoids trademark infringement.\n\n";
+1. ENGLISH ONLY — ZERO TOLERANCE FOR CHINESE TEXT:
+   ALL text on the generated image MUST be in ENGLISH. This is NON-NEGOTIABLE.
+   - The prompt below may contain Chinese words (e.g., product names, material descriptions like "凉感面料", "不锈钢", "棉质"). You MUST TRANSLATE every single Chinese word to English BEFORE rendering it on the image.
+   - If you see Chinese text like "优质凉感面料", render it as "Premium Cooling Fabric" — NEVER copy the Chinese characters onto the image.
+   - ZERO Chinese characters (中文/汉字) are allowed anywhere on the image — headers, labels, annotations, descriptions, ALL must be English.
 
-  const englishRuleAfter = "\n\n⚠️ FINAL REMINDER — ENGLISH ONLY: Every single piece of text rendered on this image MUST be in English. Do NOT write any Chinese characters (中文/汉字) anywhere on the image. This includes headers, labels, annotations, captions, feature descriptions, and any other visible text. Translate all Chinese content to English. This is a STRICT requirement.";
+2. NO MINORS — Do NOT include babies, infants, children, or anyone under 18. Only show ADULTS.
 
-  content.push({ type: "text", text: multiNote + englishRuleBefore + noChildrenRule + noBrandRule + prompt + englishRuleAfter });
+3. NO BRAND LOGOS — Do NOT include real brand names/logos (Coca-Cola, Nike, Apple, etc.). Use generic unbranded items only.
+
+`;
+
+  content.push({ type: "text", text: multiNote + globalRules + prompt + "\n\n⚠️ FINAL CHECK: Verify ZERO Chinese characters appear anywhere on the image. Every piece of text must be in English." });
 
   const response = await getClient().chat.completions.create({
     model: MODEL,
