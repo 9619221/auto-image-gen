@@ -1,4 +1,23 @@
 import OpenAI from "openai";
+import sharp from "sharp";
+
+const TARGET_SIZE = 800;
+
+async function resizeToTarget(dataUrl: string): Promise<string> {
+  const base64Match = dataUrl.match(/^data:image\/([^;]+);base64,(.+)$/);
+  if (!base64Match) return dataUrl;
+
+  const format = base64Match[1];
+  const base64Data = base64Match[2];
+  const buffer = Buffer.from(base64Data, "base64");
+
+  const resized = await sharp(buffer)
+    .resize(TARGET_SIZE, TARGET_SIZE, { fit: "contain", background: { r: 255, g: 255, b: 255, alpha: 1 } })
+    .png()
+    .toBuffer();
+
+  return `data:image/png;base64,${resized.toString("base64")}`;
+}
 
 function getClient() {
   const apiKey = process.env.GENERATE_API_KEY;
@@ -71,5 +90,5 @@ export async function generateProductImage(
   if (!imgData) {
     throw new Error("AI 未能生成图片，请重试");
   }
-  return imgData;
+  return resizeToTarget(imgData);
 }
