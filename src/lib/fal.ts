@@ -44,9 +44,11 @@ export async function generateProductImage(
 
   const englishRuleBefore = "\n\nCRITICAL LANGUAGE RULE: ALL text, labels, annotations, headers, and any written content on the generated image MUST be in ENGLISH ONLY. No Chinese characters (中文) should appear anywhere in the generated image. If any part of the prompt below contains Chinese text, you MUST translate it to English before rendering it on the image.\n\n";
 
+  const noChildrenRule = "\n\n🚫 STRICT RULE — NO MINORS: Do NOT include any babies, infants, toddlers, children, or underage persons in the generated image. If the scene requires showing people, use ONLY adults (18+ years old). This rule applies to ALL image types with no exceptions.\n\n";
+
   const englishRuleAfter = "\n\n⚠️ FINAL REMINDER — ENGLISH ONLY: Every single piece of text rendered on this image MUST be in English. Do NOT write any Chinese characters (中文/汉字) anywhere on the image. This includes headers, labels, annotations, captions, feature descriptions, and any other visible text. Translate all Chinese content to English. This is a STRICT requirement.";
 
-  content.push({ type: "text", text: multiNote + englishRuleBefore + prompt + englishRuleAfter });
+  content.push({ type: "text", text: multiNote + englishRuleBefore + noChildrenRule + prompt + englishRuleAfter });
 
   const response = await getClient().chat.completions.create({
     model: MODEL,
