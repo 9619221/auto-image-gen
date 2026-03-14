@@ -24,7 +24,8 @@ function extractImageBase64(content: string): string | null {
  */
 export async function generateProductImage(
   productImages: string[],
-  prompt: string
+  prompt: string,
+  productMode: "single" | "bundle" = "single"
 ): Promise<string> {
   const content: Array<{ type: "image_url"; image_url: { url: string } } | { type: "text"; text: string }> = [];
 
@@ -32,10 +33,14 @@ export async function generateProductImage(
     content.push({ type: "image_url", image_url: { url: img } });
   }
 
-  const multiNote =
-    productImages.length > 1
-      ? `\n\nIMPORTANT: You are given ${productImages.length} different product reference images. These products are sold together as a BUNDLE SET. ALL ${productImages.length} products MUST appear together in the generated image. Do NOT omit any product.\n\n`
-      : "";
+  let multiNote = "";
+  if (productImages.length > 1) {
+    if (productMode === "bundle") {
+      multiNote = `\n\nIMPORTANT: You are given ${productImages.length} different product reference images. These products are sold together as a BUNDLE SET. ALL ${productImages.length} products MUST appear together in the generated image. Do NOT omit any product.\n\n`;
+    } else {
+      multiNote = `\n\nIMPORTANT: You are given ${productImages.length} reference images of the SAME SINGLE product taken from different angles. These are NOT different products - they are multiple views of ONE product. Generate the image showing only ONE product. Do NOT duplicate the product or show multiple copies.\n\n`;
+    }
+  }
 
   const englishRuleBefore = "\n\nCRITICAL LANGUAGE RULE: ALL text, labels, annotations, headers, and any written content on the generated image MUST be in ENGLISH ONLY. No Chinese characters (中文) should appear anywhere in the generated image. If any part of the prompt below contains Chinese text, you MUST translate it to English before rendering it on the image.\n\n";
 

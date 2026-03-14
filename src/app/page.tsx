@@ -90,6 +90,7 @@ export default function Home() {
         body: JSON.stringify({
           plans,
           originalImages,
+          productMode,
         }),
       });
 
@@ -134,7 +135,7 @@ export default function Home() {
       setError(err instanceof Error ? err.message : "生成失败");
       setIsGenerating(false);
     }
-  }, [originalImages, plans]);
+  }, [originalImages, plans, productMode]);
 
   const handleReset = () => {
     setStep("upload");

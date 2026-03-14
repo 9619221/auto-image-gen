@@ -183,12 +183,18 @@ STYLE:
 
 ⚠️ ALL TEXT ON THE IMAGE MUST BE IN ENGLISH. Translate any non-English content to English.
 
-CRITICAL RULE: ONLY show items that are VISIBLE in the reference product images. Do NOT invent, add, or fabricate any accessories, attachments, manuals, cables, or other items that are not clearly shown in the reference images. If only the main product is shown in the reference images, then ONLY show the main product in a beautiful flat-lay arrangement.
+🚫🚫🚫 ABSOLUTE RULE — DO NOT ADD ANY ITEMS 🚫🚫🚫
+You MUST ONLY show items that are CLEARLY VISIBLE in the reference product images provided.
+- Do NOT invent, imagine, add, or fabricate ANY accessories, cables, manuals, user guides, boxes, bags, straps, tools, adapters, chargers, or ANY other items
+- Do NOT add items that "typically come with" this type of product
+- Do NOT assume what might be in the package
+- If only the main product is visible in the reference images, show ONLY the main product
+- Count the items in the reference images — the generated image must contain the EXACT SAME items, nothing more, nothing less
 
 LAYOUT:
 - Overhead / bird's eye view flat-lay arrangement
 - Main product prominently in CENTER
-- ONLY arrange items that appear in the reference images
+- ONLY arrange items that appear in the reference images — NOTHING ELSE
 - Each item clearly visible and labeled IN ENGLISH
 - Maintain REALISTIC size proportions between items
 

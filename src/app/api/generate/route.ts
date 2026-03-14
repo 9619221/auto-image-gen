@@ -3,9 +3,10 @@ import { generateProductImage } from "@/lib/fal";
 import type { ImagePlan } from "@/lib/types";
 
 export async function POST(req: NextRequest) {
-  const { plans, originalImages } = (await req.json()) as {
+  const { plans, originalImages, productMode = "single" } = (await req.json()) as {
     plans: ImagePlan[];
     originalImages: string[];
+    productMode?: "single" | "bundle";
   };
 
   const encoder = new TextEncoder();
@@ -21,7 +22,8 @@ export async function POST(req: NextRequest) {
 
           const imageDataUrl = await generateProductImage(
             originalImages,
-            plan.prompt
+            plan.prompt,
+            productMode
           );
 
           send({
