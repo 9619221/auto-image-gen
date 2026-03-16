@@ -1,5 +1,5 @@
-import type { AnalysisResult, ImageType, ImagePlan, AnalysisLanguage } from "./types";
-import { IMAGE_TYPE_LABELS, LANGUAGE_ENGLISH_NAMES } from "./types";
+import type { AnalysisResult, ImageType, ImagePlan, SalesRegion } from "./types";
+import { IMAGE_TYPE_LABELS, REGION_CONFIGS, regionToLanguage, LANGUAGE_ENGLISH_NAMES } from "./types";
 
 // Extract English from bilingual "中文 (English)" format, or return original if no English found
 function toEnglish(text: string): string {
@@ -97,7 +97,7 @@ const sceneEnvironments = [
 export function generatePlans(
   analysis: AnalysisResult,
   imageTypes: ImageType[],
-  imageLanguage: AnalysisLanguage = "en"
+  salesRegion: SalesRegion = "us"
 ): ImagePlan[] {
   const { sellingPoints, materials, colors, usageScenes, targetAudience, estimatedDimensions, category } = analysis;
 
@@ -109,13 +109,24 @@ export function generatePlans(
   const enMaterials = toEnglish(materials);
   const enColors = toEnglish(colors);
 
-  // Target language for text on generated images
+  // Region config
+  const regionConfig = REGION_CONFIGS[salesRegion];
+  const imageLanguage = regionToLanguage(salesRegion);
   const targetLang = LANGUAGE_ENGLISH_NAMES[imageLanguage] || "English";
   const langRule = imageLanguage === "en"
     ? "ALL text on the image MUST be in ENGLISH."
     : imageLanguage === "zh"
     ? "ALL text on the image MUST be in CHINESE (中文). Write all headers, labels, and annotations in Chinese."
     : `ALL text on the image MUST be in ${targetLang.toUpperCase()}. Write all headers, labels, and annotations in ${targetLang}.`;
+
+  // Regional style rules injected into all prompts
+  const regionStyleRule = `
+🎨 REGIONAL STYLE — ${regionConfig.label}:
+- Photography style: ${regionConfig.styleGuide}
+- Models/people: ${regionConfig.modelEthnicity}
+- Scene/interior style: ${regionConfig.sceneStyle}
+- Color tone: ${regionConfig.colorTone}
+`;
 
   const sp1 = enSellingPoints[0] || "Premium Quality";
   const sp2 = enSellingPoints[1] || "Durable Design";
@@ -269,6 +280,7 @@ STYLE:
           prompt: `Create a LIFESTYLE SCENE image showing this ${productName} in a beautiful, aspirational setting for Amazon listing.
 
 ⚠️ ${langRule}
+${regionStyleRule}
 
 🔒 PRODUCT FIDELITY RULE: The product in this scene must look EXACTLY like the reference photos — same shape, color, texture, material. Do NOT alter, redesign, or change the product appearance. The product must be visually identical to the reference.
 
@@ -279,7 +291,7 @@ This image must evoke EMOTION and DESIRE. It should look like a page from a high
 
 MOOD: ${pickRandom(lifestyleMoods)}
 COMPOSITION: ${pickRandom(lifestyleCompositions)}
-ENVIRONMENT: ${pickRandom(sceneEnvironments)}
+ENVIRONMENT: ${regionConfig.sceneStyle}
 
 - Apply SHALLOW DEPTH OF FIELD (bokeh) — the background should have a beautiful, creamy blur
 - Color grading: warm tones, slightly desaturated shadows, luminous highlights
@@ -367,6 +379,7 @@ STYLE:
           prompt: `Create a MULTI-SCENARIO LIFESTYLE image for this ${productName} for Amazon listing.
 
 ⚠️ ${langRule}
+${regionStyleRule}
 
 🔒 PRODUCT FIDELITY RULE: The product in EVERY scene must look EXACTLY like the reference photos — same shape, color, texture, material. Do NOT alter, redesign, or change the product appearance in any scene.
 
@@ -390,7 +403,7 @@ Product strengths: ${sp1}, ${sp2}, ${sp3} (translate to English if not already)
 LAYOUT: ${pickRandom(multiSceneLayouts)}
 
 SCENES — each must show a UNIQUE purchase reason:
-1. 🏠 "${scene1}" — Show the product enhancing daily life in a ${pickRandom(sceneEnvironments)}. Text overlay: a short benefit headline (max 5 words)
+1. 🏠 "${scene1}" — Show the product enhancing daily life in a ${regionConfig.sceneStyle.split(".")[0]} setting. Text overlay: a short benefit headline (max 5 words)
 2. 🎁 GIFTING / SPECIAL OCCASION — Show the product as a thoughtful gift or in a celebration/holiday/birthday setting. This appeals to gift-buyers (a huge market). Text overlay: e.g., "The Perfect Gift"
 3. 💼 "${scene2}" — Show a DIFFERENT person/demographic using the product in a completely different environment. Text overlay: a different benefit angle
 4. ✨ VERSATILITY / MULTI-USE — Show the product used in an unexpected or creative way that expands its perceived value. Text: e.g., "More Than You Think"

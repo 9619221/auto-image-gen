@@ -7,8 +7,8 @@ import AnalysisResultComponent from "@/components/AnalysisResult";
 import ImageTypeSelector from "@/components/ImageTypeSelector";
 import ImagePlanEditor from "@/components/ImagePlanEditor";
 import ResultGallery from "@/components/ResultGallery";
-import { IMAGE_TYPE_ORDER } from "@/lib/types";
-import type { AnalysisResult, ImageType, ImagePlan, GenerationJob, AnalysisLanguage } from "@/lib/types";
+import { IMAGE_TYPE_ORDER, regionToLanguage } from "@/lib/types";
+import type { AnalysisResult, ImageType, ImagePlan, GenerationJob, SalesRegion } from "@/lib/types";
 import { generatePlans } from "@/lib/prompt-templates";
 import { Loader2, Zap, RotateCcw, ArrowRight } from "lucide-react";
 
@@ -26,7 +26,7 @@ export default function Home() {
   const [jobs, setJobs] = useState<GenerationJob[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [productMode, setProductMode] = useState<ProductMode>("single");
-  const [language, setLanguage] = useState<AnalysisLanguage>("zh");
+  const [salesRegion, setSalesRegion] = useState<SalesRegion>("us");
   const [error, setError] = useState<string | null>(null);
 
   const handleAnalyze = useCallback(async () => {
@@ -67,10 +67,10 @@ export default function Home() {
 
   const handleProceedToPlan = useCallback(() => {
     if (!analysis) return;
-    const imagePlans = generatePlans(analysis, selectedTypes, language);
+    const imagePlans = generatePlans(analysis, selectedTypes, salesRegion);
     setPlans(imagePlans);
     setStep("plan");
-  }, [analysis, selectedTypes, language]);
+  }, [analysis, selectedTypes, salesRegion]);
 
   const handleGenerate = useCallback(async () => {
     if (originalImages.length === 0 || plans.length === 0) return;
@@ -92,7 +92,8 @@ export default function Home() {
           plans,
           originalImages,
           productMode,
-          imageLanguage: language,
+          imageLanguage: regionToLanguage(salesRegion),
+          salesRegion,
         }),
       });
 
@@ -137,7 +138,7 @@ export default function Home() {
       setError(err instanceof Error ? err.message : "生成失败");
       setIsGenerating(false);
     }
-  }, [originalImages, plans, productMode]);
+  }, [originalImages, plans, productMode, salesRegion]);
 
   const handleReset = () => {
     setStep("upload");
@@ -148,7 +149,7 @@ export default function Home() {
     setError(null);
     setSelectedTypes([...IMAGE_TYPE_ORDER]);
     setProductMode("single");
-    setLanguage("zh");
+    setSalesRegion("us");
   };
 
   return (
@@ -227,8 +228,8 @@ export default function Home() {
               onSubmit={handleAnalyze}
               productMode={productMode}
               onProductModeChange={setProductMode}
-              language={language}
-              onLanguageChange={setLanguage}
+              salesRegion={salesRegion}
+              onSalesRegionChange={setSalesRegion}
             />
             <p className="text-center text-xs text-slate-400 mt-4">
               上传 1-5 张商品图，支持组合装/套装多商品

@@ -2,8 +2,8 @@
 
 import { useCallback, useRef } from "react";
 import { Upload, Loader2, X, Plus, Globe } from "lucide-react";
-import type { AnalysisLanguage } from "@/lib/types";
-import { LANGUAGE_LABELS } from "@/lib/types";
+import type { SalesRegion } from "@/lib/types";
+import { REGION_CONFIGS, REGION_ORDER } from "@/lib/types";
 
 const MAX_IMAGES = 5;
 
@@ -16,8 +16,8 @@ interface ImageUploaderProps {
   onSubmit: () => void;
   productMode: ProductMode;
   onProductModeChange: (mode: ProductMode) => void;
-  language: AnalysisLanguage;
-  onLanguageChange: (lang: AnalysisLanguage) => void;
+  salesRegion: SalesRegion;
+  onSalesRegionChange: (region: SalesRegion) => void;
 }
 
 export default function ImageUploader({
@@ -27,8 +27,8 @@ export default function ImageUploader({
   onSubmit,
   productMode,
   onProductModeChange,
-  language,
-  onLanguageChange,
+  salesRegion,
+  onSalesRegionChange,
 }: ImageUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -75,6 +75,7 @@ export default function ImageUploader({
   );
 
   const hasImages = images.length > 0;
+  const currentRegion = REGION_CONFIGS[salesRegion];
 
   return (
     <div className="w-full space-y-4">
@@ -207,21 +208,36 @@ export default function ImageUploader({
             )}
           </div>
 
-          {/* Target Market Language Selector */}
-          <div className="mt-4 p-3 rounded-xl bg-gradient-to-r from-slate-50 to-blue-50/50 border border-slate-200">
-            <div className="flex items-center gap-2 mb-2">
+          {/* Sales Region Selector */}
+          <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-slate-50 to-blue-50/50 border border-slate-200">
+            <div className="flex items-center gap-2 mb-3">
               <Globe className="w-4 h-4 text-blue-500" />
-              <p className="text-xs text-slate-500 font-medium">图片文字语言（目标市场）：</p>
+              <p className="text-sm text-slate-700 font-semibold">销售地区（决定图片语言和风格）</p>
             </div>
-            <select
-              value={language}
-              onChange={(e) => onLanguageChange(e.target.value as AnalysisLanguage)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
-            >
-              {Object.entries(LANGUAGE_LABELS).map(([code, label]) => (
-                <option key={code} value={code}>{label}</option>
-              ))}
-            </select>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+              {REGION_ORDER.map((regionCode) => {
+                const config = REGION_CONFIGS[regionCode];
+                const isSelected = salesRegion === regionCode;
+                return (
+                  <button
+                    key={regionCode}
+                    onClick={() => onSalesRegionChange(regionCode)}
+                    className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-center ${
+                      isSelected
+                        ? "bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow-md shadow-indigo-200 scale-[1.02]"
+                        : "bg-white text-slate-600 border border-slate-200 hover:border-indigo-300 hover:shadow-sm"
+                    }`}
+                  >
+                    <span className="text-base">{config.flag}</span>
+                    <span className="block text-xs mt-0.5 truncate">{config.label.split(" / ")[0].replace(/^.{2}\s*/, "")}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-2 flex items-center gap-2 text-xs text-slate-400">
+              <span className="inline-block w-2 h-2 rounded-full bg-indigo-400"></span>
+              当前：{currentRegion.label} — 图片语言 {currentRegion.languageNative}，{currentRegion.sceneStyle.split(".")[0]}风格
+            </div>
           </div>
 
           {/* Submit button */}
