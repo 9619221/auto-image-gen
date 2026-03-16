@@ -1,6 +1,5 @@
 import OpenAI from "openai";
-import type { AnalysisResult, AnalysisLanguage } from "./types";
-import { LANGUAGE_ENGLISH_NAMES } from "./types";
+import type { AnalysisResult } from "./types";
 
 function getClient() {
   const apiKey = process.env.ANALYZE_API_KEY;
@@ -13,7 +12,7 @@ function getClient() {
   });
 }
 
-function buildAnalysisPrompt(imageCount: number, productMode: string, language: AnalysisLanguage = "zh"): string {
+function buildAnalysisPrompt(imageCount: number, productMode: string): string {
   let modeNote = "";
 
   if (imageCount > 1 && productMode === "single") {
@@ -22,72 +21,38 @@ function buildAnalysisPrompt(imageCount: number, productMode: string, language: 
     modeNote = `\nIMPORTANT: You see ${imageCount} images of different products. These are sold together as a BUNDLE SET. Analyze the entire set as one listing — productName should describe the bundle, sellingPoints should cover the combination value, usageScenes should show how these items work together.`;
   }
 
-  const langName = LANGUAGE_ENGLISH_NAMES[language] || "Chinese";
-
-  // For all languages: output in chosen language + English in parentheses for image generation
-  const bilingualNote = language === "en"
-    ? `🚨 CRITICAL FORMAT: All text fields must be in English only.`
-    : `🚨 CRITICAL FORMAT: Every text field must be BILINGUAL — ${langName} first, then English in parentheses. Example format depends on language:
-- Chinese: "不锈钢保温杯 (Stainless Steel Insulated Tumbler)"
-- Japanese: "ステンレス断熱タンブラー (Stainless Steel Insulated Tumbler)"
-- Korean: "스테인리스 보온 텀블러 (Stainless Steel Insulated Tumbler)"
-- Spanish: "Vaso térmico de acero inoxidable (Stainless Steel Insulated Tumbler)"
-This format helps the user review in ${langName} while the English part in parentheses is used for image generation.`;
-
-  const nameExample = language === "en"
-    ? `"English Product Name${imageCount > 1 && productMode === "bundle" ? " — describe the bundle" : ""}"`
-    : `"${langName}名称 (English Product Name)${imageCount > 1 && productMode === "bundle" ? " — describe the bundle" : ""}"`;
-
-  const fieldExample = language === "en"
-    ? {
-        category: '"Product Category"',
-        sp: '["Selling Point 1", "Selling Point 2", "Selling Point 3"]',
-        materials: '"Material description"',
-        colors: '"Color description"',
-        audience: '["Audience 1", "Audience 2", "Audience 3"]',
-        scenes: '["Scene 1", "Scene 2", "Scene 3"]',
-      }
-    : {
-        category: `"${langName}类目 (English Category)"`,
-        sp: `["${langName}卖点1 (English SP1)", "${langName}卖点2 (English SP2)", "${langName}卖点3 (English SP3)"]`,
-        materials: `"${langName}材质 (English Material)"`,
-        colors: `"${langName}颜色 (English Color)"`,
-        audience: `["${langName}人群1 (English Audience 1)", "${langName}人群2 (English Audience 2)"]`,
-        scenes: `["${langName}场景1 (English Scene 1)", "${langName}场景2 (English Scene 2)"]`,
-      };
-
   return `You are a professional e-commerce product analyst. Analyze the product images and extract the following information. Return ONLY valid JSON.
 
-${bilingualNote}${modeNote}
+🚨 CRITICAL FORMAT: Every text field must be BILINGUAL — Chinese first, then English in parentheses. Example: "不锈钢保温杯 (Stainless Steel Insulated Tumbler)"
+This format helps the user review in Chinese while the English part is used for image generation.${modeNote}
 
 Return ONLY valid JSON with this structure:
 {
-  "productName": ${nameExample},
-  "category": ${fieldExample.category},
-  "sellingPoints": ${fieldExample.sp},
-  "materials": ${fieldExample.materials},
-  "colors": ${fieldExample.colors},
-  "targetAudience": ${fieldExample.audience},
-  "usageScenes": ${fieldExample.scenes},
-  "estimatedDimensions": "e.g., 30 x 20 x 15 cm / 11.8 x 7.9 x 5.9 in"
+  "productName": "中文商品名称 (English Product Name)${imageCount > 1 && productMode === "bundle" ? " — describe the bundle" : ""}",
+  "category": "中文类目 (English Category)",
+  "sellingPoints": ["中文卖点1 (English SP1)", "中文卖点2 (English SP2)", "中文卖点3 (English SP3)"],
+  "materials": "中文材质 (English Material)",
+  "colors": "中文颜色 (English Color)",
+  "targetAudience": ["中文人群1 (English Audience 1)", "中文人群2 (English Audience 2)", "中文人群3 (English Audience 3)"],
+  "usageScenes": ["中文场景1 (English Scene 1)", "中文场景2 (English Scene 2)", "中文场景3 (English Scene 3)"],
+  "estimatedDimensions": "尺寸 (e.g., 30 x 20 x 15 cm / 11.8 x 7.9 x 5.9 in)"
 }
 
 Selling Points: Extract 3-5 core features, advantages, and unique selling points.
 Target Audience: Identify 3 different buyer personas.
-Usage Scenes: Describe 5 diverse, specific, vivid real-world usage scenarios.`;
+Usage Scenes: Describe 5 diverse, specific, vivid real-world usage scenarios (e.g., "忙碌的上班族下班回家后在玄关桌上整理钥匙和钱包 (A busy professional organizing keys and wallet on the entryway table after coming home)").`;
 }
 
 export async function analyzeProduct(
   images: string[],
-  productMode: string = "single",
-  language: AnalysisLanguage = "zh"
+  productMode: string = "single"
 ): Promise<AnalysisResult> {
   const content: Array<{ type: "image_url"; image_url: { url: string } } | { type: "text"; text: string }> = [];
 
   for (const img of images) {
     content.push({ type: "image_url", image_url: { url: img } });
   }
-  content.push({ type: "text", text: buildAnalysisPrompt(images.length, productMode, language) });
+  content.push({ type: "text", text: buildAnalysisPrompt(images.length, productMode) });
 
   const response = await getClient().chat.completions.create({
     model: process.env.ANALYZE_MODEL || "gemini-3.1-flash-image-preview",

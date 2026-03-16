@@ -1,12 +1,13 @@
 import { NextRequest } from "next/server";
 import { generateProductImage } from "@/lib/fal";
-import type { ImagePlan } from "@/lib/types";
+import type { ImagePlan, AnalysisLanguage } from "@/lib/types";
 
 export async function POST(req: NextRequest) {
-  const { plans, originalImages, productMode = "single" } = (await req.json()) as {
+  const { plans, originalImages, productMode = "single", imageLanguage = "en" } = (await req.json()) as {
     plans: ImagePlan[];
     originalImages: string[];
     productMode?: "single" | "bundle";
+    imageLanguage?: AnalysisLanguage;
   };
 
   const encoder = new TextEncoder();
@@ -23,7 +24,8 @@ export async function POST(req: NextRequest) {
           const imageDataUrl = await generateProductImage(
             originalImages,
             plan.prompt,
-            productMode
+            productMode,
+            imageLanguage
           );
 
           send({

@@ -38,7 +38,7 @@ export default function Home() {
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ images: originalImages, productMode, language }),
+        body: JSON.stringify({ images: originalImages, productMode }),
       });
       const data = await res.json();
 
@@ -63,14 +63,14 @@ export default function Home() {
     } finally {
       setIsProcessing(false);
     }
-  }, [originalImages, productMode, language]);
+  }, [originalImages, productMode]);
 
   const handleProceedToPlan = useCallback(() => {
     if (!analysis) return;
-    const imagePlans = generatePlans(analysis, selectedTypes);
+    const imagePlans = generatePlans(analysis, selectedTypes, language);
     setPlans(imagePlans);
     setStep("plan");
-  }, [analysis, selectedTypes]);
+  }, [analysis, selectedTypes, language]);
 
   const handleGenerate = useCallback(async () => {
     if (originalImages.length === 0 || plans.length === 0) return;
@@ -92,6 +92,7 @@ export default function Home() {
           plans,
           originalImages,
           productMode,
+          imageLanguage: language,
         }),
       });
 

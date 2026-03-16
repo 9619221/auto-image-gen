@@ -207,11 +207,11 @@ export default function ImageUploader({
             )}
           </div>
 
-          {/* Language Selector */}
+          {/* Target Market Language Selector */}
           <div className="mt-4 p-3 rounded-xl bg-gradient-to-r from-slate-50 to-blue-50/50 border border-slate-200">
             <div className="flex items-center gap-2 mb-2">
               <Globe className="w-4 h-4 text-blue-500" />
-              <p className="text-xs text-slate-500 font-medium">分析语言 / Analysis Language：</p>
+              <p className="text-xs text-slate-500 font-medium">图片文字语言（目标市场）：</p>
             </div>
             <select
               value={language}

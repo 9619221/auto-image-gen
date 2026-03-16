@@ -1,5 +1,5 @@
-import type { AnalysisResult, ImageType, ImagePlan } from "./types";
-import { IMAGE_TYPE_LABELS } from "./types";
+import type { AnalysisResult, ImageType, ImagePlan, AnalysisLanguage } from "./types";
+import { IMAGE_TYPE_LABELS, LANGUAGE_ENGLISH_NAMES } from "./types";
 
 // Extract English from bilingual "中文 (English)" format, or return original if no English found
 function toEnglish(text: string): string {
@@ -96,17 +96,26 @@ const sceneEnvironments = [
 
 export function generatePlans(
   analysis: AnalysisResult,
-  imageTypes: ImageType[]
+  imageTypes: ImageType[],
+  imageLanguage: AnalysisLanguage = "en"
 ): ImagePlan[] {
   const { sellingPoints, materials, colors, usageScenes, targetAudience, estimatedDimensions, category } = analysis;
 
-  // Convert ALL fields to English to prevent Chinese text appearing in generated images
+  // Convert ALL fields to English first (used as base for prompts)
   const productName = toEnglish(analysis.productName);
   const enSellingPoints = toEnglishArray(sellingPoints);
   const enScenes = toEnglishArray(usageScenes);
   const enAudience = toEnglishArray(targetAudience);
   const enMaterials = toEnglish(materials);
   const enColors = toEnglish(colors);
+
+  // Target language for text on generated images
+  const targetLang = LANGUAGE_ENGLISH_NAMES[imageLanguage] || "English";
+  const langRule = imageLanguage === "en"
+    ? "ALL text on the image MUST be in ENGLISH."
+    : imageLanguage === "zh"
+    ? "ALL text on the image MUST be in CHINESE (中文). Write all headers, labels, and annotations in Chinese."
+    : `ALL text on the image MUST be in ${targetLang.toUpperCase()}. Write all headers, labels, and annotations in ${targetLang}.`;
 
   const sp1 = enSellingPoints[0] || "Premium Quality";
   const sp2 = enSellingPoints[1] || "Durable Design";
@@ -150,7 +159,7 @@ This is the HERO image - it must be clean, professional, and make the product lo
           description: `展示${productName}的核心功能：${sp1}、${sp2}、${sp3}，带有功能标注箭头和图标说明。`,
           prompt: `Create a product FEATURE SHOWCASE image for this ${productName} for Amazon listing.
 
-⚠️ ALL TEXT ON THE IMAGE MUST BE IN ENGLISH. If any feature description below is in Chinese or another language, translate it to English before writing it on the image.
+⚠️ ${langRule}
 
 🔒 PRODUCT FIDELITY RULE: The product in this image must look EXACTLY like the reference photos — same shape, color, texture, material. Do NOT alter the product appearance. Show ONLY ONE product.
 
@@ -181,7 +190,7 @@ STYLE:
 - Colors: product-appropriate color scheme with ${enColors} tones
 - CRITICAL: Maintain REALISTIC product size proportions - do not exaggerate dimensions
 - Premium commercial quality, 800x800px
-- ALL text, labels, headers MUST be in ENGLISH only
+- ${langRule}
 
 Do NOT add dimension lines, measurement annotations, or size specifications. Focus ONLY on features and selling points.`,
         };
@@ -193,7 +202,7 @@ Do NOT add dimension lines, measurement annotations, or size specifications. Foc
           description: `${productName}材质特写，展示${enMaterials}的质感和工艺细节，配放大镜效果或局部截取。`,
           prompt: `Create a CLOSE-UP DETAIL image for this ${productName} for Amazon listing.
 
-⚠️ ALL TEXT ON THE IMAGE MUST BE IN ENGLISH. Translate any non-English content to English.
+⚠️ ${langRule}
 
 🔒 CRITICAL — SINGLE PRODUCT ONLY: Show ONLY ONE product. Do NOT show two or more copies of the product. If you want to show different sides/angles, use a MAGNIFYING GLASS or ZOOM CIRCLE overlay on the SAME single product — do NOT place multiple separate products side by side.
 
@@ -215,7 +224,7 @@ STYLE:
 - The detail shot should convince customers of premium build quality
 - CRITICAL: Maintain REALISTIC product size proportions
 - 800x800px, commercial product photography quality
-- ALL text MUST be in ENGLISH only
+- ${langRule}
 - Do NOT add dimension lines or measurement annotations`,
         };
 
@@ -226,7 +235,7 @@ STYLE:
           description: `${productName}尺寸标注（${estimatedDimensions}），带测量线和数值，搭配实际使用参照物展示大小。`,
           prompt: `Create a DIMENSIONS & SIZE REFERENCE image for this ${productName} for Amazon listing.
 
-⚠️ ALL TEXT ON THE IMAGE MUST BE IN ENGLISH. Translate any non-English content to English.
+⚠️ ${langRule}
 
 🔒 PRODUCT FIDELITY RULE: The product must look EXACTLY like the reference photos. Show ONLY ONE product.
 
@@ -249,7 +258,7 @@ STYLE:
 - Technical but approachable design
 - Precise measurement annotations with clear dimension values
 - Professional quality, 800x800px
-- ALL text MUST be in ENGLISH only`,
+- ${langRule}`,
         };
 
       case "lifestyle":
@@ -259,7 +268,7 @@ STYLE:
           description: `面向${audience1}，展示${productName}如何解决客户痛点。场景：${scene1}。突出产品卖点：${sp1}，给客户必须购买的理由。`,
           prompt: `Create a LIFESTYLE SCENE image showing this ${productName} in a beautiful, aspirational setting for Amazon listing.
 
-⚠️ ALL TEXT ON THE IMAGE MUST BE IN ENGLISH. If any text below is in Chinese or another language, translate it to English for the image.
+⚠️ ${langRule}
 
 🔒 PRODUCT FIDELITY RULE: The product in this scene must look EXACTLY like the reference photos — same shape, color, texture, material. Do NOT alter, redesign, or change the product appearance. The product must be visually identical to the reference.
 
@@ -297,7 +306,7 @@ REQUIREMENTS:
 - The product must be the CLEAR FOCAL POINT
 - CRITICAL: Maintain REALISTIC product size proportions
 - Only show ADULTS (18+ years old) — NO children, babies, or minors
-- Any text overlays MUST be in ENGLISH only
+- ${langRule}
 
 STYLE:
 - HIGH-END editorial lifestyle photography (Architectural Digest, Elle Decor quality)
@@ -305,7 +314,7 @@ STYLE:
 - Beautiful bokeh and shallow depth of field
 - Soft, directional lighting that creates mood and depth
 - 800x800px, premium editorial photography quality
-- ALL text MUST be in ENGLISH only
+- ${langRule}
 - Do NOT add dimension lines or measurement annotations on this image`,
         };
 
@@ -316,7 +325,7 @@ STYLE:
           description: `${productName}包装内容展示，仅展示参考图中可见的物品，整齐排列，鸟瞰角度。`,
           prompt: `Create a PACKAGE CONTENTS / WHAT'S INCLUDED image for this ${productName} for Amazon listing.
 
-⚠️ ALL TEXT ON THE IMAGE MUST BE IN ENGLISH. Translate any non-English content to English.
+⚠️ ${langRule}
 
 🚫🚫🚫 ABSOLUTE RULE — DO NOT ADD ANY ITEMS 🚫🚫🚫
 You MUST ONLY show items that are CLEARLY VISIBLE in the reference product images provided.
@@ -346,7 +355,7 @@ STYLE:
 - Instagram-worthy organized layout
 - Premium unboxing experience feel
 - 800x800px, commercial photography quality
-- ALL text MUST be in ENGLISH only
+- ${langRule}
 - Do NOT add dimension lines or measurement annotations on this image`,
         };
 
@@ -357,7 +366,7 @@ STYLE:
           description: `${productName}在多种场景中的丰富应用，面向不同人群（${audience1}、${audience2}），展示多元化使用方式和购买价值。`,
           prompt: `Create a MULTI-SCENARIO LIFESTYLE image for this ${productName} for Amazon listing.
 
-⚠️ ALL TEXT ON THE IMAGE MUST BE IN ENGLISH. If any text below is in Chinese or another language, translate it to English for the image.
+⚠️ ${langRule}
 
 🔒 PRODUCT FIDELITY RULE: The product in EVERY scene must look EXACTLY like the reference photos — same shape, color, texture, material. Do NOT alter, redesign, or change the product appearance in any scene.
 
@@ -395,14 +404,14 @@ REQUIREMENTS:
 - CRITICAL: Maintain REALISTIC product size proportions in every scene
 - Show ADULT people (18+ only) — NO children, babies, or minors
 - EVERY scene must look like a DIFFERENT photo shoot — different location, different model, different time of day
-- Any text overlays or labels MUST be in ENGLISH only
+- ${langRule}
 
 STYLE:
 - Each scene: HIGH-END editorial lifestyle photography quality
 - Rich, warm, cinematic color grading in every panel
 - Beautiful bokeh and atmospheric lighting throughout
 - 800x800px, premium editorial quality
-- ALL text MUST be in ENGLISH only
+- ${langRule}
 - Do NOT add dimension lines or measurement annotations
 
 The goal: after seeing this image, the customer should think "I can use this for SO many things — I need to buy it NOW."`,

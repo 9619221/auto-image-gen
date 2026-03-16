@@ -1,5 +1,7 @@
 import OpenAI from "openai";
 import sharp from "sharp";
+import type { AnalysisLanguage } from "./types";
+import { LANGUAGE_ENGLISH_NAMES } from "./types";
 
 const TARGET_SIZE = 800;
 
@@ -44,7 +46,8 @@ function extractImageBase64(content: string): string | null {
 export async function generateProductImage(
   productImages: string[],
   prompt: string,
-  productMode: "single" | "bundle" = "single"
+  productMode: "single" | "bundle" = "single",
+  imageLanguage: AnalysisLanguage = "en"
 ): Promise<string> {
   const content: Array<{ type: "image_url"; image_url: { url: string } } | { type: "text"; text: string }> = [];
 
@@ -61,15 +64,25 @@ export async function generateProductImage(
     }
   }
 
+  const targetLang = LANGUAGE_ENGLISH_NAMES[imageLanguage] || "English";
+  const langInstruction = imageLanguage === "en"
+    ? `ALL text on the generated image MUST be in ENGLISH. This is NON-NEGOTIABLE.
+   - The prompt below may contain Chinese words. You MUST TRANSLATE every Chinese word to English BEFORE rendering it on the image.
+   - ZERO Chinese characters (中文/汉字) are allowed anywhere on the image.`
+    : imageLanguage === "zh"
+    ? `ALL text on the generated image MUST be in CHINESE (中文). This is NON-NEGOTIABLE.
+   - Write all headers, labels, annotations, and descriptions in Chinese.
+   - Do NOT use English for any visible text on the image.`
+    : `ALL text on the generated image MUST be in ${targetLang.toUpperCase()}. This is NON-NEGOTIABLE.
+   - Write all headers, labels, annotations, and descriptions in ${targetLang}.
+   - Do NOT use English or Chinese for any visible text on the image — use ${targetLang} ONLY.`;
+
   const globalRules = `
 
 🚨🚨🚨 MANDATORY RULES — READ BEFORE GENERATING 🚨🚨🚨
 
-1. ENGLISH ONLY — ZERO TOLERANCE FOR CHINESE TEXT:
-   ALL text on the generated image MUST be in ENGLISH. This is NON-NEGOTIABLE.
-   - The prompt below may contain Chinese words (e.g., product names, material descriptions like "凉感面料", "不锈钢", "棉质"). You MUST TRANSLATE every single Chinese word to English BEFORE rendering it on the image.
-   - If you see Chinese text like "优质凉感面料", render it as "Premium Cooling Fabric" — NEVER copy the Chinese characters onto the image.
-   - ZERO Chinese characters (中文/汉字) are allowed anywhere on the image — headers, labels, annotations, descriptions, ALL must be English.
+1. ${targetLang.toUpperCase()} TEXT ONLY:
+   ${langInstruction}
 
 2. NO MINORS — Do NOT include babies, infants, children, or anyone under 18. Only show ADULTS.
 
@@ -77,7 +90,13 @@ export async function generateProductImage(
 
 `;
 
-  content.push({ type: "text", text: multiNote + globalRules + prompt + "\n\n⚠️ FINAL CHECK: Verify ZERO Chinese characters appear anywhere on the image. Every piece of text must be in English." });
+  const finalCheck = imageLanguage === "en"
+    ? "⚠️ FINAL CHECK: Verify ZERO Chinese characters appear anywhere on the image. Every piece of text must be in English."
+    : imageLanguage === "zh"
+    ? "⚠️ FINAL CHECK: 确认图片上所有文字都是中文。"
+    : `⚠️ FINAL CHECK: Verify ALL text on the image is in ${targetLang}. No English or Chinese text should appear.`;
+
+  content.push({ type: "text", text: multiNote + globalRules + prompt + "\n\n" + finalCheck });
 
   const response = await getClient().chat.completions.create({
     model: MODEL,
