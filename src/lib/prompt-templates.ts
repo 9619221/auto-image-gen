@@ -1,6 +1,60 @@
 import type { AnalysisResult, ImageType, ImagePlan } from "./types";
 import { IMAGE_TYPE_LABELS } from "./types";
 
+// Randomization helpers to avoid template-like repetitive outputs
+function pickRandom<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+const mainAngles = [
+  "from a slight 3/4 angle showing depth and dimension",
+  "from a clean front-facing perspective with soft shadow underneath",
+  "from a slightly elevated angle showing the top and front",
+  "from a dynamic low angle that makes the product look impressive",
+];
+
+const mainLighting = [
+  "Professional studio lighting with soft, even illumination and subtle rim light",
+  "Clean butterfly lighting with a gentle gradient shadow beneath the product",
+  "Bright, airy studio lighting with a soft reflection on the surface below",
+  "Dramatic studio lighting with one key light creating elegant shadow play",
+];
+
+const featureLayouts = [
+  "Arrange annotations in a CIRCULAR pattern around the product with curved connector lines",
+  "Place annotations on the LEFT and RIGHT sides of the product with horizontal arrows pointing inward",
+  "Use a TOP-DOWN flow: header at top, product in center, feature callouts radiating outward with dotted lines",
+  "Place the product slightly left of center, with all feature annotations stacked neatly on the right side",
+];
+
+const closeupStyles = [
+  "Use a MAGNIFYING GLASS effect hovering over the product to zoom into material detail",
+  "Use a CIRCULAR ZOOM INSET in the corner showing an extreme close-up of the texture",
+  "Split the image: full product on the left, extreme macro close-up on the right",
+  "Use a diagonal split — upper portion shows the full product, lower portion is an extreme close-up of the surface texture",
+];
+
+const lifestyleMoods = [
+  "GOLDEN HOUR — warm sunset light streaming through large windows, long soft shadows, honey-toned warmth",
+  "BRIGHT MORNING — fresh, crisp daylight with white curtains gently diffusing sunlight, clean and airy",
+  "COZY EVENING — warm lamp light, soft candlelight ambiance, intimate and inviting atmosphere",
+  "NATURAL DAYLIGHT — bright, cheerful midday light with soft shadows, fresh and vibrant energy",
+];
+
+const lifestyleCompositions = [
+  "Product as the hero in the foreground with the scene softly blurred behind (shallow DOF)",
+  "Wide environmental shot showing the full room/space with the product naturally placed as the eye-catching centerpiece",
+  "Over-the-shoulder perspective of someone enjoying the product in their space",
+  "Tight medium shot focusing on the product in use with beautiful bokeh background",
+];
+
+const multiSceneLayouts = [
+  "2x2 GRID layout — four equal scenes, each with a different mood and setting",
+  "HERO + THUMBNAILS — one large main scene on top, 2-3 smaller scenes in a row below",
+  "TRIPTYCH — three vertical panels side by side, each a different scenario",
+  "DIAGONAL SPLIT — two large triangular scenes divided by a clean diagonal line",
+];
+
 export function generatePlans(
   analysis: AnalysisResult,
   imageTypes: ImageType[]
@@ -25,12 +79,13 @@ export function generatePlans(
 
 🔒 PRODUCT FIDELITY RULE: The generated product must be a FAITHFUL reproduction of the reference image(s). Match the EXACT shape, color, texture, material, stitching, edges, and proportions. Do NOT alter, stylize, or "improve" the product appearance.
 
+CAMERA ANGLE: ${pickRandom(mainAngles)}
+LIGHTING: ${pickRandom(mainLighting)}
+
 REQUIREMENTS:
 - Pure white background (RGB 255,255,255), absolutely clean
 - Show ONLY ONE product — do NOT duplicate or show multiple copies
 - Product centered, occupying 85% of the frame
-- Show the product from its best angle, clearly displaying its structure and design
-- Professional studio lighting with soft, even illumination
 - Sharp, crisp product edges
 - NO text, NO logos, NO watermarks, NO annotations, NO props, NO dimension lines or measurements
 - CRITICAL: Maintain the product's REAL-WORLD size proportions. Do NOT exaggerate or distort the product dimensions
@@ -51,10 +106,9 @@ This is the HERO image - it must be clean, professional, and make the product lo
 
 🔒 PRODUCT FIDELITY RULE: The product in this image must look EXACTLY like the reference photos — same shape, color, texture, material. Do NOT alter the product appearance. Show ONLY ONE product.
 
-LAYOUT:
-- Show ONLY ONE product centered on a clean, light gradient background
-- Add ANNOTATION ARROWS pointing to key features on the product
-- Include ICON LABELS next to each arrow with feature descriptions IN ENGLISH
+LAYOUT STYLE: ${pickRandom(featureLayouts)}
+- Show ONLY ONE product on a clean, light gradient background
+- Include ICON LABELS with SHORT feature descriptions IN ENGLISH
 
 KEY FEATURES TO HIGHLIGHT (translate to English if not already):
 1. "${sp1}" - with arrow pointing to the relevant product area
@@ -62,10 +116,18 @@ KEY FEATURES TO HIGHLIGHT (translate to English if not already):
 3. "${sp3}" - with arrow pointing to the relevant area
 
 HEADER TEXT at top: English translation of "${sp1}" (main selling point as headline)
-SUB-HEADER: key benefit description IN ENGLISH
+SUB-HEADER: ONE short sentence (max 8 words) IN ENGLISH
+
+⚠️ TEXT DENSITY RULE — CRITICAL:
+- Keep ALL text SHORT and CONCISE — maximum 3-5 words per label
+- Header: max 6 words. Sub-header: max 8 words.
+- Each feature label: max 5 words (e.g., "Lightweight & Breathable", "Durable Construction")
+- Do NOT write full sentences or paragraphs on the image
+- WHITE SPACE is important — leave breathing room between text elements
+- Fewer words = more impact. If in doubt, use fewer words.
 
 STYLE:
-- Clean, modern infographic layout
+- Clean, modern infographic layout with plenty of white space
 - Professional product photography with overlay annotations
 - Use clean icons and thin annotation lines/arrows
 - Colors: product-appropriate color scheme with ${colors} tones
@@ -73,8 +135,7 @@ STYLE:
 - Premium commercial quality, 800x800px
 - ALL text, labels, headers MUST be in ENGLISH only
 
-Do NOT add dimension lines, measurement annotations, or size specifications. Focus ONLY on features and selling points.
-Make the features visually clear and the annotations easy to read.`,
+Do NOT add dimension lines, measurement annotations, or size specifications. Focus ONLY on features and selling points.`,
         };
 
       case "closeup":
@@ -90,15 +151,14 @@ Make the features visually clear and the annotations easy to read.`,
 
 🔒 PRODUCT FIDELITY RULE: The product must look EXACTLY like the reference photos — same shape, color shade, texture, material, stitching pattern. Do NOT change the product color or appearance.
 
-LAYOUT:
-- Show ONE product with a dramatic close-up perspective
-- Use a MAGNIFYING GLASS or ZOOM CIRCLE effect on part of the product to highlight material detail
-- The zoom area should clearly show the ${materials} texture, stitching, or craftsmanship
+LAYOUT & CLOSE-UP STYLE: ${pickRandom(closeupStyles)}
+- Show ONE product — the close-up detail should clearly reveal the ${materials} texture, stitching, or craftsmanship
 
 TEXT ELEMENTS (ALL IN ENGLISH):
 - Header: "PREMIUM ${materials.toUpperCase()} QUALITY" or similar English text
 - Sub-text highlighting durability and craftsmanship in English
 - 2-3 small icon labels in English describing material properties
+- ⚠️ CRITICAL: Every label must be UNIQUE — do NOT repeat the same text or phrase twice. Each label must describe a DIFFERENT property (e.g., one for material, one for durability, one for comfort). Double-check before finalizing.
 
 STYLE:
 - Dramatic side lighting to emphasize surface texture
@@ -159,9 +219,11 @@ STYLE:
 
 🎨 ATMOSPHERE & MOOD RULE — THIS IS CRITICAL:
 This image must evoke EMOTION and DESIRE. It should look like a page from a high-end lifestyle magazine, NOT a generic product placement photo.
-- Use GOLDEN HOUR or WARM AMBIENT lighting — soft, diffused, with visible warm light rays or glow
+
+MOOD: ${pickRandom(lifestyleMoods)}
+COMPOSITION: ${pickRandom(lifestyleCompositions)}
+
 - Apply SHALLOW DEPTH OF FIELD (bokeh) — the background should have a beautiful, creamy blur
-- Add ATMOSPHERIC elements: soft morning light through curtains, warm sunset glow, cozy candlelight ambiance, or fresh natural daylight with visible sun flares
 - Color grading: warm tones, slightly desaturated shadows, luminous highlights — like a professional lifestyle photographer's edit
 - The scene should feel LIVED-IN, COZY, and ASPIRATIONAL — like a dream home or perfect moment
 - If the product is decorative (flowers, art, decor): make it look STUNNING and ALIVE — render artificial flowers as if they were FRESH, REAL flowers with natural petal softness and organic beauty. The customer should think "I NEED this in my home"
@@ -263,9 +325,7 @@ Show DIVERSE, RICH usage scenarios that appeal to DIFFERENT customer segments.
 Target audiences: ${audience1}, ${audience2} (translate to English if not already)
 Product strengths: ${sp1}, ${sp2}, ${sp3} (translate to English if not already)
 
-LAYOUT:
-- Show the product in MULTIPLE different scenarios (2-4 scenes)
-- Use a clean split-image layout
+LAYOUT: ${pickRandom(multiSceneLayouts)}
 - Each scenario targets a DIFFERENT customer type or mood
 
 DIVERSE SCENARIOS TO SHOW:
