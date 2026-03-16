@@ -12,7 +12,7 @@ async function resizeToTarget(dataUrl: string): Promise<string> {
   const buffer = Buffer.from(base64Data, "base64");
 
   const resized = await sharp(buffer)
-    .resize(TARGET_SIZE, TARGET_SIZE, { fit: "contain", background: { r: 255, g: 255, b: 255, alpha: 1 } })
+    .resize(TARGET_SIZE, TARGET_SIZE, { fit: "cover" })
     .png()
     .toBuffer();
 
