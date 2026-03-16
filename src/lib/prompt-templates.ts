@@ -149,41 +149,47 @@ STYLE:
           imageType,
           title: "使用场景图 - 痛点解决与购买理由",
           description: `面向${audience1}，展示${productName}如何解决客户痛点。场景：${scene1}。突出产品卖点：${sp1}，给客户必须购买的理由。`,
-          prompt: `Create a LIFESTYLE SCENE image showing this ${productName} solving a real customer problem for Amazon listing.
+          prompt: `Create a LIFESTYLE SCENE image showing this ${productName} in a beautiful, aspirational setting for Amazon listing.
 
 ⚠️ ALL TEXT ON THE IMAGE MUST BE IN ENGLISH. If any text below is in Chinese or another language, translate it to English for the image.
 
 🔒 PRODUCT FIDELITY RULE: The product in this scene must look EXACTLY like the reference photos — same shape, color, texture, material. Do NOT alter, redesign, or change the product appearance. The product must be visually identical to the reference.
 
-🔒 CORRECT USAGE RULE: Show the product being used in its CORRECT, INTENDED way. Study the reference images to understand HOW this product is meant to be used. For example: if it's a glove, it must be WORN on the hand; if it's a tool, it must be HELD properly; if it's clothing, it must be WORN correctly. Do NOT show the product being used incorrectly.
+🔒 CORRECT USAGE RULE: Show the product being used in its CORRECT, INTENDED way. Study the reference images to understand HOW this product is meant to be used.
+
+🎨 ATMOSPHERE & MOOD RULE — THIS IS CRITICAL:
+This image must evoke EMOTION and DESIRE. It should look like a page from a high-end lifestyle magazine, NOT a generic product placement photo.
+- Use GOLDEN HOUR or WARM AMBIENT lighting — soft, diffused, with visible warm light rays or glow
+- Apply SHALLOW DEPTH OF FIELD (bokeh) — the background should have a beautiful, creamy blur
+- Add ATMOSPHERIC elements: soft morning light through curtains, warm sunset glow, cozy candlelight ambiance, or fresh natural daylight with visible sun flares
+- Color grading: warm tones, slightly desaturated shadows, luminous highlights — like a professional lifestyle photographer's edit
+- The scene should feel LIVED-IN, COZY, and ASPIRATIONAL — like a dream home or perfect moment
+- If the product is decorative (flowers, art, decor): make it look STUNNING and ALIVE — render artificial flowers as if they were FRESH, REAL flowers with natural petal softness and organic beauty. The customer should think "I NEED this in my home"
 
 SCENE: ${scene1}
 TARGET AUDIENCE: ${audience1}
 
-MARKETING ANGLE - PAIN POINT & SOLUTION:
-Think about what problems or frustrations the target customer (${audience1}) faces BEFORE buying this product. Show how this product SOLVES that pain point and makes their life better.
-
-KEY SELLING POINT to emphasize: "${sp1}" (translate to English if not already)
+MARKETING ANGLE:
+KEY SELLING POINT: "${sp1}" (translate to English if not already)
 Additional benefits: "${sp2}", "${sp3}" (translate to English if not already)
 
-The image should give the customer a compelling reason to BUY NOW.
+The image should make the customer FEEL something — warmth, comfort, beauty, aspiration.
 
 REQUIREMENTS:
-- Show the product being ACTIVELY and CORRECTLY USED in a realistic ${scene1} setting
-- The product must be the CLEAR FOCAL POINT of the image
-- Product must be NATURALLY INTEGRATED into the scene
+- Show the product NATURALLY INTEGRATED into a beautiful ${scene1} setting
+- The product must be the CLEAR FOCAL POINT but feel organic in the scene
 - CRITICAL: Maintain REALISTIC product size proportions
-- Warm, inviting atmosphere with natural ambient lighting
-- Show EMOTION - a satisfied ADULT user, a problem being solved
+- Show EMOTION — a peaceful moment, a beautiful space, an aspirational lifestyle
 - Only show ADULTS (18+ years old) — NO children, babies, or minors
 - Any text overlays MUST be in ENGLISH only
 
 STYLE:
-- Lifestyle magazine quality photography
-- Natural, warm color tones
-- The product should look like it BELONGS in the scene
-- Show the BENEFIT and RESULT of using the product
-- 800x800px, editorial photography quality
+- HIGH-END editorial lifestyle photography (think Architectural Digest, Elle Decor)
+- Cinematic color grading with warm, rich tones
+- Beautiful bokeh and shallow depth of field
+- Soft, directional lighting that creates mood and depth
+- The image should look like it costs thousands to shoot
+- 800x800px, premium editorial photography quality
 - ALL text MUST be in ENGLISH only
 - Do NOT add dimension lines or measurement annotations on this image`,
         };
@@ -240,43 +246,51 @@ STYLE:
 
 🔒 PRODUCT FIDELITY RULE: The product in EVERY scene must look EXACTLY like the reference photos — same shape, color, texture, material. Do NOT alter, redesign, or change the product appearance in any scene.
 
-🔒 CORRECT USAGE RULE: In EVERY scene, the product must be used in its CORRECT, INTENDED way. Study the reference images to understand the proper usage method. For example: if it's a glove/mitt, it must be WORN on the hand in every scene; if it's a tool, it must be HELD and used properly. NEVER show the product being used incorrectly (e.g., don't show a glove lying flat being pushed across a surface — it should be WORN).
+🔒 CORRECT USAGE RULE: In EVERY scene, the product must be used in its CORRECT, INTENDED way. Study the reference images to understand the proper usage method.
+
+🎨 ATMOSPHERE & MOOD RULE — CRITICAL FOR EVERY SCENE:
+Each scene must be EMOTIONALLY compelling and VISUALLY stunning:
+- Use CINEMATIC LIGHTING in every scene — golden hour glow, soft window light, warm ambient tones
+- Apply SHALLOW DEPTH OF FIELD (bokeh) — dreamy blurred backgrounds that make the product pop
+- Each scene should feel like a MOVIE STILL or HIGH-END MAGAZINE PHOTO, not a generic stock image
+- Color grading: warm, rich, slightly cinematic tones — think lifestyle influencer photography
+- If the product is decorative (flowers, art, decor): render it as BEAUTIFUL and ALIVE as possible. Artificial flowers should look like FRESH, REAL blooms — lush, vibrant, with natural organic beauty
+- Every scene should make the viewer think "I want that life"
 
 MARKETING STRATEGY:
-Show DIVERSE, RICH usage scenarios that appeal to DIFFERENT customer segments. Each scene should answer: "How will this product fit into MY life?"
+Show DIVERSE, RICH usage scenarios that appeal to DIFFERENT customer segments.
 
 Target audiences: ${audience1}, ${audience2} (translate to English if not already)
 Product strengths: ${sp1}, ${sp2}, ${sp3} (translate to English if not already)
 
 LAYOUT:
-- Show the product being CORRECTLY used in MULTIPLE different scenarios
-- Use a clean split-image layout (2-4 scenes)
-- Each scenario should target a DIFFERENT customer type or situation
-- Scenes should feel diverse and rich - different locations, times of day, activities
+- Show the product in MULTIPLE different scenarios (2-4 scenes)
+- Use a clean split-image layout
+- Each scenario targets a DIFFERENT customer type or mood
 
 DIVERSE SCENARIOS TO SHOW:
-1. ${scene1} - showing how it solves a daily problem
-2. ${scene2} - showing a different use case or user type
-3. A creative or unexpected use that adds extra value
-4. Optional: storage, maintenance, or portability advantage
+1. ${scene1} — warm, intimate atmosphere with beautiful lighting
+2. ${scene2} — different mood, different time of day, different energy
+3. A creative or unexpected use that adds aspirational value
 
 REQUIREMENTS:
 - CRITICAL: Maintain REALISTIC product size proportions in every scene
-- Each scene should tell a mini-story about WHY the customer needs this product
-- Show ADULT people (18+ only) benefiting from the product — NO children, babies, or minors
+- Each scene should evoke EMOTION and DESIRE
+- Show ADULT people (18+ only) — NO children, babies, or minors
 - The product must be used CORRECTLY in every scene
-- Diverse settings: home, outdoor, work, travel, etc.
+- Diverse settings with DIFFERENT MOODS: cozy morning, bright afternoon, warm evening
 - Any text overlays or labels MUST be in ENGLISH only
 
 STYLE:
-- Clean layout that clearly shows multiple applications
-- Each mini-scene should be realistic, warm, and well-lit
-- Product is clearly recognizable in each scene
-- 800x800px, commercial quality
+- Each scene: HIGH-END editorial lifestyle photography quality
+- Rich, warm, cinematic color grading in every panel
+- Beautiful bokeh and atmospheric lighting throughout
+- Product is the star but feels natural in each environment
+- 800x800px, premium editorial quality
 - ALL text MUST be in ENGLISH only
-- Do NOT add dimension lines or measurement annotations on this image
+- Do NOT add dimension lines or measurement annotations
 
-The goal is to make EVERY potential customer see themselves using this product.`,
+The goal: every scene should make the customer FEEL something and SEE themselves living with this product.`,
         };
 
       default:
