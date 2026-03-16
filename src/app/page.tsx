@@ -8,7 +8,7 @@ import ImageTypeSelector from "@/components/ImageTypeSelector";
 import ImagePlanEditor from "@/components/ImagePlanEditor";
 import ResultGallery from "@/components/ResultGallery";
 import { IMAGE_TYPE_ORDER } from "@/lib/types";
-import type { AnalysisResult, ImageType, ImagePlan, GenerationJob } from "@/lib/types";
+import type { AnalysisResult, ImageType, ImagePlan, GenerationJob, AnalysisLanguage } from "@/lib/types";
 import { generatePlans } from "@/lib/prompt-templates";
 import { Loader2, Zap, RotateCcw, ArrowRight } from "lucide-react";
 
@@ -26,6 +26,7 @@ export default function Home() {
   const [jobs, setJobs] = useState<GenerationJob[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [productMode, setProductMode] = useState<ProductMode>("single");
+  const [language, setLanguage] = useState<AnalysisLanguage>("zh");
   const [error, setError] = useState<string | null>(null);
 
   const handleAnalyze = useCallback(async () => {
@@ -37,7 +38,7 @@ export default function Home() {
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ images: originalImages, productMode }),
+        body: JSON.stringify({ images: originalImages, productMode, language }),
       });
       const data = await res.json();
 
@@ -62,7 +63,7 @@ export default function Home() {
     } finally {
       setIsProcessing(false);
     }
-  }, [originalImages, productMode]);
+  }, [originalImages, productMode, language]);
 
   const handleProceedToPlan = useCallback(() => {
     if (!analysis) return;
@@ -146,6 +147,7 @@ export default function Home() {
     setError(null);
     setSelectedTypes([...IMAGE_TYPE_ORDER]);
     setProductMode("single");
+    setLanguage("zh");
   };
 
   return (
@@ -224,6 +226,8 @@ export default function Home() {
               onSubmit={handleAnalyze}
               productMode={productMode}
               onProductModeChange={setProductMode}
+              language={language}
+              onLanguageChange={setLanguage}
             />
             <p className="text-center text-xs text-slate-400 mt-4">
               上传 1-5 张商品图，支持组合装/套装多商品

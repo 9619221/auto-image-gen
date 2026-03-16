@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useRef } from "react";
-import { Upload, Loader2, X, Plus } from "lucide-react";
+import { Upload, Loader2, X, Plus, Globe } from "lucide-react";
+import type { AnalysisLanguage } from "@/lib/types";
+import { LANGUAGE_LABELS } from "@/lib/types";
 
 const MAX_IMAGES = 5;
 
@@ -14,6 +16,8 @@ interface ImageUploaderProps {
   onSubmit: () => void;
   productMode: ProductMode;
   onProductModeChange: (mode: ProductMode) => void;
+  language: AnalysisLanguage;
+  onLanguageChange: (lang: AnalysisLanguage) => void;
 }
 
 export default function ImageUploader({
@@ -23,6 +27,8 @@ export default function ImageUploader({
   onSubmit,
   productMode,
   onProductModeChange,
+  language,
+  onLanguageChange,
 }: ImageUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -199,6 +205,23 @@ export default function ImageUploader({
                 />
               </label>
             )}
+          </div>
+
+          {/* Language Selector */}
+          <div className="mt-4 p-3 rounded-xl bg-gradient-to-r from-slate-50 to-blue-50/50 border border-slate-200">
+            <div className="flex items-center gap-2 mb-2">
+              <Globe className="w-4 h-4 text-blue-500" />
+              <p className="text-xs text-slate-500 font-medium">分析语言 / Analysis Language：</p>
+            </div>
+            <select
+              value={language}
+              onChange={(e) => onLanguageChange(e.target.value as AnalysisLanguage)}
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+            >
+              {Object.entries(LANGUAGE_LABELS).map(([code, label]) => (
+                <option key={code} value={code}>{label}</option>
+              ))}
+            </select>
           </div>
 
           {/* Submit button */}

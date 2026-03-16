@@ -45,6 +45,38 @@ export interface ImagePlan {
   prompt: string;
 }
 
+export type AnalysisLanguage = "zh" | "en" | "ja" | "ko" | "es" | "fr" | "de" | "pt" | "it" | "ru" | "ar" | "th";
+
+export const LANGUAGE_LABELS: Record<AnalysisLanguage, string> = {
+  zh: "🇨🇳 中文",
+  en: "🇺🇸 English",
+  ja: "🇯🇵 日本語",
+  ko: "🇰🇷 한국어",
+  es: "🇪🇸 Español",
+  fr: "🇫🇷 Français",
+  de: "🇩🇪 Deutsch",
+  pt: "🇧🇷 Português",
+  it: "🇮🇹 Italiano",
+  ru: "🇷🇺 Русский",
+  ar: "🇸🇦 العربية",
+  th: "🇹🇭 ไทย",
+};
+
+export const LANGUAGE_ENGLISH_NAMES: Record<AnalysisLanguage, string> = {
+  zh: "Chinese",
+  en: "English",
+  ja: "Japanese",
+  ko: "Korean",
+  es: "Spanish",
+  fr: "French",
+  de: "German",
+  pt: "Portuguese",
+  it: "Italian",
+  ru: "Russian",
+  ar: "Arabic",
+  th: "Thai",
+};
+
 export interface GenerationJob {
   imageType: ImageType;
   status: "pending" | "generating" | "done" | "error";

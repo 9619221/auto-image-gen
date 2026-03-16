@@ -1,6 +1,25 @@
 import type { AnalysisResult, ImageType, ImagePlan } from "./types";
 import { IMAGE_TYPE_LABELS } from "./types";
 
+// Extract English from bilingual "中文 (English)" format, or return original if no English found
+function toEnglish(text: string): string {
+  // Match content inside parentheses at the end: "中文文字 (English Text)"
+  const match = text.match(/\(([^)]+)\)\s*$/);
+  if (match) return match[1].trim();
+  // Also try full-width parentheses: "中文（English）"
+  const match2 = text.match(/（([^）]+)）\s*$/);
+  if (match2) return match2[1].trim();
+  // If no Chinese characters detected, return as-is (already English)
+  if (!/[\u4e00-\u9fff]/.test(text)) return text;
+  // Fallback: return original (will rely on prompt-level translation rules)
+  return text;
+}
+
+// Convert all fields in analysis result to English
+function toEnglishArray(arr: string[]): string[] {
+  return arr.map(toEnglish);
+}
+
 // Randomization helpers to avoid template-like repetitive outputs
 function pickRandom<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -79,14 +98,23 @@ export function generatePlans(
   analysis: AnalysisResult,
   imageTypes: ImageType[]
 ): ImagePlan[] {
-  const { productName, sellingPoints, materials, colors, usageScenes, targetAudience, estimatedDimensions, category } = analysis;
-  const sp1 = sellingPoints[0] || "Premium Quality";
-  const sp2 = sellingPoints[1] || "Durable Design";
-  const sp3 = sellingPoints[2] || "Easy to Use";
-  const scene1 = usageScenes[0] || "everyday use";
-  const scene2 = usageScenes[1] || usageScenes[0] || "professional use";
-  const audience1 = targetAudience[0] || "everyday consumers";
-  const audience2 = targetAudience[1] || targetAudience[0] || "professionals";
+  const { sellingPoints, materials, colors, usageScenes, targetAudience, estimatedDimensions, category } = analysis;
+
+  // Convert ALL fields to English to prevent Chinese text appearing in generated images
+  const productName = toEnglish(analysis.productName);
+  const enSellingPoints = toEnglishArray(sellingPoints);
+  const enScenes = toEnglishArray(usageScenes);
+  const enAudience = toEnglishArray(targetAudience);
+  const enMaterials = toEnglish(materials);
+  const enColors = toEnglish(colors);
+
+  const sp1 = enSellingPoints[0] || "Premium Quality";
+  const sp2 = enSellingPoints[1] || "Durable Design";
+  const sp3 = enSellingPoints[2] || "Easy to Use";
+  const scene1 = enScenes[0] || "everyday use";
+  const scene2 = enScenes[1] || enScenes[0] || "professional use";
+  const audience1 = enAudience[0] || "everyday consumers";
+  const audience2 = enAudience[1] || enAudience[0] || "professionals";
 
   return imageTypes.map((imageType) => {
     switch (imageType) {
@@ -150,7 +178,7 @@ STYLE:
 - Clean, modern infographic layout with plenty of white space
 - Professional product photography with overlay annotations
 - Use clean icons and thin annotation lines/arrows
-- Colors: product-appropriate color scheme with ${colors} tones
+- Colors: product-appropriate color scheme with ${enColors} tones
 - CRITICAL: Maintain REALISTIC product size proportions - do not exaggerate dimensions
 - Premium commercial quality, 800x800px
 - ALL text, labels, headers MUST be in ENGLISH only
@@ -162,7 +190,7 @@ Do NOT add dimension lines, measurement annotations, or size specifications. Foc
         return {
           imageType,
           title: "细节特写图 - 材质与工艺",
-          description: `${productName}材质特写，展示${materials}的质感和工艺细节，配放大镜效果或局部截取。`,
+          description: `${productName}材质特写，展示${enMaterials}的质感和工艺细节，配放大镜效果或局部截取。`,
           prompt: `Create a CLOSE-UP DETAIL image for this ${productName} for Amazon listing.
 
 ⚠️ ALL TEXT ON THE IMAGE MUST BE IN ENGLISH. Translate any non-English content to English.
@@ -172,7 +200,7 @@ Do NOT add dimension lines, measurement annotations, or size specifications. Foc
 🔒 PRODUCT FIDELITY RULE: The product must look EXACTLY like the reference photos — same shape, color shade, texture, material, stitching pattern. Do NOT change the product color or appearance.
 
 LAYOUT & CLOSE-UP STYLE: ${pickRandom(closeupStyles)}
-- Show ONE product — the close-up detail should clearly reveal the ${materials} texture, stitching, or craftsmanship
+- Show ONE product — the close-up detail should clearly reveal the ${enMaterials} texture, stitching, or craftsmanship
 
 TEXT ELEMENTS (ALL IN ENGLISH):
 - Header: "PREMIUM ${materials.toUpperCase()} QUALITY" or similar English text
