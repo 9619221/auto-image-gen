@@ -55,6 +55,26 @@ const multiSceneLayouts = [
   "DIAGONAL SPLIT — two large triangular scenes divided by a clean diagonal line",
 ];
 
+// Pain-point marketing angles for lifestyle images — gives buyers a REASON to purchase
+const painPointAngles = [
+  "BEFORE vs AFTER: Show the contrast — the dull/boring/messy space WITHOUT the product vs the beautiful/upgraded space WITH the product. The viewer should immediately see the transformation.",
+  "PROBLEM → SOLUTION: Show a common frustration the target customer faces (e.g., boring decor, uncomfortable experience, lack of style) and how THIS product is the perfect solution.",
+  "GIFTING MOMENT: Show someone receiving or gifting this product — wrapped beautifully or being presented. Convey that this is a PERFECT GIFT that will delight the recipient.",
+  "UPGRADE YOUR SPACE: Show a stylish, aspirational space where this product is the KEY element that ties everything together. Without it, the space would feel incomplete.",
+];
+
+// Diverse scene environments — prevents repetitive same-room shots
+const sceneEnvironments = [
+  "Modern minimalist living room with large windows and natural light",
+  "Cozy bedroom with soft textiles, warm lamp light, and a relaxing atmosphere",
+  "Bright, airy kitchen or dining area with fresh morning energy",
+  "Stylish home office or study with plants and creative decor",
+  "Outdoor patio or balcony with garden views and natural greenery",
+  "Elegant entryway or hallway that sets the tone for the whole home",
+  "Romantic dinner table setting with candles and warm ambiance",
+  "Modern bathroom vanity or spa-like relaxation corner",
+];
+
 export function generatePlans(
   analysis: AnalysisResult,
   imageTypes: ImageType[]
@@ -222,35 +242,40 @@ This image must evoke EMOTION and DESIRE. It should look like a page from a high
 
 MOOD: ${pickRandom(lifestyleMoods)}
 COMPOSITION: ${pickRandom(lifestyleCompositions)}
+ENVIRONMENT: ${pickRandom(sceneEnvironments)}
 
 - Apply SHALLOW DEPTH OF FIELD (bokeh) — the background should have a beautiful, creamy blur
-- Color grading: warm tones, slightly desaturated shadows, luminous highlights — like a professional lifestyle photographer's edit
-- The scene should feel LIVED-IN, COZY, and ASPIRATIONAL — like a dream home or perfect moment
-- If the product is decorative (flowers, art, decor): make it look STUNNING and ALIVE — render artificial flowers as if they were FRESH, REAL flowers with natural petal softness and organic beauty. The customer should think "I NEED this in my home"
+- Color grading: warm tones, slightly desaturated shadows, luminous highlights
+- If the product is decorative (flowers, art, decor): make it look STUNNING and ALIVE — render artificial flowers as if they were FRESH, REAL flowers with natural petal softness and organic beauty
 
 SCENE: ${scene1}
 TARGET AUDIENCE: ${audience1}
 
-MARKETING ANGLE:
+💰 PURCHASE MOTIVATION — WHY SHOULD THE CUSTOMER BUY THIS?
+MARKETING ANGLE: ${pickRandom(painPointAngles)}
+
 KEY SELLING POINT: "${sp1}" (translate to English if not already)
 Additional benefits: "${sp2}", "${sp3}" (translate to English if not already)
 
-The image should make the customer FEEL something — warmth, comfort, beauty, aspiration.
+The image must answer the customer's question: "Why do I NEED this?" Show them:
+- How this product TRANSFORMS their space, experience, or daily life
+- The EMOTIONAL BENEFIT — joy, comfort, pride, relaxation, style upgrade
+- A clear BEFORE→AFTER feeling: life is BETTER with this product
+
+Add a SHORT, punchy English text overlay (max 6 words) that communicates the key benefit — like a magazine headline that makes people stop scrolling. Examples: "Transform Your Space", "The Perfect Gift", "Effortless Elegance", "Make It Yours"
 
 REQUIREMENTS:
-- Show the product NATURALLY INTEGRATED into a beautiful ${scene1} setting
-- The product must be the CLEAR FOCAL POINT but feel organic in the scene
+- Show the product NATURALLY INTEGRATED into the scene
+- The product must be the CLEAR FOCAL POINT
 - CRITICAL: Maintain REALISTIC product size proportions
-- Show EMOTION — a peaceful moment, a beautiful space, an aspirational lifestyle
 - Only show ADULTS (18+ years old) — NO children, babies, or minors
 - Any text overlays MUST be in ENGLISH only
 
 STYLE:
-- HIGH-END editorial lifestyle photography (think Architectural Digest, Elle Decor)
+- HIGH-END editorial lifestyle photography (Architectural Digest, Elle Decor quality)
 - Cinematic color grading with warm, rich tones
 - Beautiful bokeh and shallow depth of field
 - Soft, directional lighting that creates mood and depth
-- The image should look like it costs thousands to shoot
 - 800x800px, premium editorial photography quality
 - ALL text MUST be in ENGLISH only
 - Do NOT add dimension lines or measurement annotations on this image`,
@@ -319,38 +344,40 @@ Each scene must be EMOTIONALLY compelling and VISUALLY stunning:
 - If the product is decorative (flowers, art, decor): render it as BEAUTIFUL and ALIVE as possible. Artificial flowers should look like FRESH, REAL blooms — lush, vibrant, with natural organic beauty
 - Every scene should make the viewer think "I want that life"
 
-MARKETING STRATEGY:
-Show DIVERSE, RICH usage scenarios that appeal to DIFFERENT customer segments.
+💰 MARKETING STRATEGY — GIVE BUYERS MULTIPLE REASONS TO PURCHASE:
+Each scene must answer a DIFFERENT version of "Why should I buy this?"
 
 Target audiences: ${audience1}, ${audience2} (translate to English if not already)
 Product strengths: ${sp1}, ${sp2}, ${sp3} (translate to English if not already)
 
 LAYOUT: ${pickRandom(multiSceneLayouts)}
-- Each scenario targets a DIFFERENT customer type or mood
 
-DIVERSE SCENARIOS TO SHOW:
-1. ${scene1} — warm, intimate atmosphere with beautiful lighting
-2. ${scene2} — different mood, different time of day, different energy
-3. A creative or unexpected use that adds aspirational value
+SCENES — each must show a UNIQUE purchase reason:
+1. 🏠 "${scene1}" — Show the product enhancing daily life in a ${pickRandom(sceneEnvironments)}. Text overlay: a short benefit headline (max 5 words)
+2. 🎁 GIFTING / SPECIAL OCCASION — Show the product as a thoughtful gift or in a celebration/holiday/birthday setting. This appeals to gift-buyers (a huge market). Text overlay: e.g., "The Perfect Gift"
+3. 💼 "${scene2}" — Show a DIFFERENT person/demographic using the product in a completely different environment. Text overlay: a different benefit angle
+4. ✨ VERSATILITY / MULTI-USE — Show the product used in an unexpected or creative way that expands its perceived value. Text: e.g., "More Than You Think"
+
+Each scene MUST have:
+- A SHORT English text overlay (max 5 words) highlighting that scene's unique purchase reason
+- A DIFFERENT environment, lighting mood, and person/demographic
+- The product used CORRECTLY
 
 REQUIREMENTS:
 - CRITICAL: Maintain REALISTIC product size proportions in every scene
-- Each scene should evoke EMOTION and DESIRE
 - Show ADULT people (18+ only) — NO children, babies, or minors
-- The product must be used CORRECTLY in every scene
-- Diverse settings with DIFFERENT MOODS: cozy morning, bright afternoon, warm evening
+- EVERY scene must look like a DIFFERENT photo shoot — different location, different model, different time of day
 - Any text overlays or labels MUST be in ENGLISH only
 
 STYLE:
 - Each scene: HIGH-END editorial lifestyle photography quality
 - Rich, warm, cinematic color grading in every panel
 - Beautiful bokeh and atmospheric lighting throughout
-- Product is the star but feels natural in each environment
 - 800x800px, premium editorial quality
 - ALL text MUST be in ENGLISH only
 - Do NOT add dimension lines or measurement annotations
 
-The goal: every scene should make the customer FEEL something and SEE themselves living with this product.`,
+The goal: after seeing this image, the customer should think "I can use this for SO many things — I need to buy it NOW."`,
         };
 
       default:
