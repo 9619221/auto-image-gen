@@ -5,20 +5,53 @@ import { LANGUAGE_ENGLISH_NAMES } from "./types";
 
 const TARGET_SIZE = 800;
 
-async function resizeToTarget(dataUrl: string): Promise<string> {
+async function resizeToTarget(dataUrl: string, useJpeg = false): Promise<string> {
   const base64Match = dataUrl.match(/^data:image\/([^;]+);base64,(.+)$/);
   if (!base64Match) return dataUrl;
 
-  const format = base64Match[1];
   const base64Data = base64Match[2];
   const buffer = Buffer.from(base64Data, "base64");
 
-  const resized = await sharp(buffer)
-    .resize(TARGET_SIZE, TARGET_SIZE, { fit: "cover" })
+  let pipeline = sharp(buffer).resize(TARGET_SIZE, TARGET_SIZE, { fit: "cover" });
+
+  if (useJpeg) {
+    const resized = await pipeline.jpeg({ quality: 90 }).toBuffer();
+    return `data:image/jpeg;base64,${resized.toString("base64")}`;
+  }
+
+  const resized = await pipeline.png().toBuffer();
+  return `data:image/png;base64,${resized.toString("base64")}`;
+}
+
+/**
+ * Force pure white background for hero/main images.
+ * Replaces near-white pixels (within threshold) with #FFFFFF.
+ */
+async function enforceWhiteBackground(dataUrl: string): Promise<string> {
+  const base64Match = dataUrl.match(/^data:image\/([^;]+);base64,(.+)$/);
+  if (!base64Match) return dataUrl;
+
+  const buffer = Buffer.from(base64Match[2], "base64");
+  const { data, info } = await sharp(buffer)
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  const threshold = 240; // pixels with R,G,B all >= 240 are treated as "white"
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i] >= threshold && data[i + 1] >= threshold && data[i + 2] >= threshold) {
+      data[i] = 255;
+      data[i + 1] = 255;
+      data[i + 2] = 255;
+      data[i + 3] = 255;
+    }
+  }
+
+  const result = await sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } })
     .png()
     .toBuffer();
 
-  return `data:image/png;base64,${resized.toString("base64")}`;
+  return `data:image/png;base64,${result.toString("base64")}`;
 }
 
 function getClient() {
@@ -47,7 +80,8 @@ export async function generateProductImage(
   productImages: string[],
   prompt: string,
   productMode: "single" | "bundle" = "single",
-  imageLanguage: AnalysisLanguage = "en"
+  imageLanguage: AnalysisLanguage = "en",
+  imageType?: string
 ): Promise<string> {
   const content: Array<{ type: "image_url"; image_url: { url: string } } | { type: "text"; text: string }> = [];
 
@@ -109,5 +143,12 @@ export async function generateProductImage(
   if (!imgData) {
     throw new Error("AI 未能生成图片，请重试");
   }
-  return resizeToTarget(imgData);
+  const isMain = imageType === "main";
+  const resized = await resizeToTarget(imgData, !isMain);
+
+  // Force pure white background for hero/main images (Amazon requirement)
+  if (isMain) {
+    return enforceWhiteBackground(resized);
+  }
+  return resized;
 }

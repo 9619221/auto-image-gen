@@ -1,29 +1,363 @@
 import type { AnalysisResult, ImageType, ImagePlan, SalesRegion } from "./types";
 import { IMAGE_TYPE_LABELS, REGION_CONFIGS, regionToLanguage, LANGUAGE_ENGLISH_NAMES } from "./types";
 
-// Extract English from bilingual "中文 (English)" format, or return original if no English found
+// ===== Text Utilities =====
+
 function toEnglish(text: string): string {
-  // Match content inside parentheses at the end: "中文文字 (English Text)"
   const match = text.match(/\(([^)]+)\)\s*$/);
   if (match) return match[1].trim();
-  // Also try full-width parentheses: "中文（English）"
   const match2 = text.match(/（([^）]+)）\s*$/);
   if (match2) return match2[1].trim();
-  // If no Chinese characters detected, return as-is (already English)
   if (!/[\u4e00-\u9fff]/.test(text)) return text;
-  // Fallback: return original (will rely on prompt-level translation rules)
   return text;
 }
 
-// Convert all fields in analysis result to English
 function toEnglishArray(arr: string[]): string[] {
   return arr.map(toEnglish);
 }
 
-// Randomization helpers to avoid template-like repetitive outputs
+/** Truncate to N words, max M chars, title-cased. Never ends on a dangling word. */
+function compactLabel(text: string, maxWords = 3, maxChars = 20): string {
+  // Strip filler / connectors that make no sense as trailing words
+  const danglingWords = new Set(["and", "or", "the", "a", "an", "with", "for", "to", "in", "on", "of", "by", "is", "are", "its", "no", "not", "your", "our", "my"]);
+
+  const words = text
+    .replace(/["""（）(),:;.\-_]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, maxWords + 2); // grab extra words so we can skip danglers
+
+  let result = "";
+  let wordCount = 0;
+  for (const word of words) {
+    if (wordCount >= maxWords) break;
+    const next = result ? `${result} ${word}` : word;
+    if (next.length > maxChars) break;
+    result = next;
+    wordCount++;
+  }
+
+  // Trim trailing dangling words
+  let parts = result.split(/\s+/);
+  while (parts.length > 1 && danglingWords.has(parts[parts.length - 1].toLowerCase())) {
+    parts.pop();
+  }
+  result = parts.join(" ");
+
+  if (!result && words[0]) result = words[0].slice(0, maxChars);
+  return titleCase(result);
+}
+
+function titleCase(text: string): string {
+  const skip = new Set(["a", "an", "the", "and", "or", "for", "in", "on", "of", "to", "with"]);
+  return text
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word, i) => (i === 0 || !skip.has(word)) ? word.charAt(0).toUpperCase() + word.slice(1) : word)
+    .join(" ");
+}
+
+function uniqueLabels(items: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const item of items) {
+    const cleaned = item.trim();
+    if (!cleaned) continue;
+    if (seen.has(cleaned.toLowerCase())) continue;
+    seen.add(cleaned.toLowerCase());
+    result.push(cleaned);
+  }
+  return result;
+}
+
 function pickRandom<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
+
+// ===== Feature → Benefit Mapping =====
+
+interface BenefitMatch {
+  pattern: RegExp;
+  painPoint: string;    // Problem the customer has
+  benefit: string;      // How the product solves it
+  badge: string;        // Short badge label
+}
+
+const BENEFIT_MAP: BenefitMatch[] = [
+  // Cleaning / disposable
+  { pattern: /dispos|one.?time|throw.?away|no.?clean|no.?wash|skip.?clean/i,
+    painPoint: "Hate Doing Dishes?",  benefit: "Zero Cleanup", badge: "Use & Toss" },
+  { pattern: /easy.?clean|wipe|rinse|dishwasher|no.?scrub/i,
+    painPoint: "No More Scrubbing", benefit: "Effortless Cleanup", badge: "Easy Clean" },
+  // Heat / cooking
+  { pattern: /heat.?resist|oven.?safe|high.?temp|withstand.?heat|fireproof/i,
+    painPoint: "Oven-Safe, Worry-Free", benefit: "Handles Any Heat", badge: "Oven-Safe" },
+  { pattern: /even.?heat|heat.?distribut|uniform.?heat|consistent.?cook/i,
+    painPoint: "Perfect Results Every Time", benefit: "Even Heat Distribution", badge: "Even Cooking" },
+  // Durability / strength
+  { pattern: /sturd|durable|strong|heavy.?duty|thick|reinforc|rigid|load.?bear/i,
+    painPoint: "Built Tough, Won't Bend", benefit: "Extra Strong Build", badge: "Extra Sturdy" },
+  { pattern: /leak.?proof|sealed|spill.?proof|no.?leak|water.?tight/i,
+    painPoint: "No Spills, No Mess", benefit: "Leak-Proof Design", badge: "Leak-Proof" },
+  // Lightweight / portable
+  { pattern: /lightweight|light.?weight|portable|easy.?carry|travel.?friendly/i,
+    painPoint: "Easy to Carry", benefit: "Light but Strong", badge: "Lightweight" },
+  // Size / capacity
+  { pattern: /large.?capac|big.?size|spacious|roomy|generous.?size|family.?size/i,
+    painPoint: "Feeds the Whole Family", benefit: "Extra Large Capacity", badge: "Family Size" },
+  // Multi-pack / value
+  { pattern: /multi.?pack|value.?pack|bulk|(\d+).?pack|(\d+).?count|(\d+).?piece/i,
+    painPoint: "Stock Up & Save", benefit: "Great Value Pack", badge: "Bulk Value" },
+  // Versatile / multi-use
+  { pattern: /versatil|multi.?use|multi.?purpose|many.?use|all.?purpose/i,
+    painPoint: "One for Everything", benefit: "Endless Possibilities", badge: "Multi-Use" },
+  // Food safety
+  { pattern: /food.?safe|food.?grade|bpa.?free|non.?toxic|safe.?material/i,
+    painPoint: "100% Food Safe", benefit: "Safe for Your Family", badge: "Food-Safe" },
+  // Non-stick
+  { pattern: /non.?stick|easy.?release|no.?stick|food.?release/i,
+    painPoint: "Food Slides Right Off", benefit: "Non-Stick Surface", badge: "Non-Stick" },
+  // Eco-friendly
+  { pattern: /eco.?friend|recyclable|sustain|green|biodegradable|compostable/i,
+    painPoint: "Better for the Planet", benefit: "Eco-Friendly Choice", badge: "Eco-Friendly" },
+  // Stackable / storage
+  { pattern: /stackab|nest|compact.?stor|space.?sav|flat.?pack/i,
+    painPoint: "Saves Cabinet Space", benefit: "Stackable Design", badge: "Stackable" },
+  // Premium / quality
+  { pattern: /premium|high.?quality|profession|commercial.?grade/i,
+    painPoint: "Restaurant Quality at Home", benefit: "Premium Grade", badge: "Pro Quality" },
+  // With lid / cover
+  { pattern: /with.?lid|lid.?includ|cover|seal.?tight/i,
+    painPoint: "Keep Food Fresh", benefit: "Lid Included", badge: "With Lid" },
+  // Aluminum specific
+  { pattern: /aluminum|aluminium|foil/i,
+    painPoint: "Cook, Serve & Toss", benefit: "Premium Aluminum", badge: "Aluminum" },
+  // Design / aesthetic
+  { pattern: /design|pattern|print|style|fashion|aesthetic|cute|decorat|beautiful/i,
+    painPoint: "Style Meets Function", benefit: "Eye-Catching Design", badge: "Stylish" },
+  // Easy / convenient
+  { pattern: /easy|convenient|simple|hassle.?free|effortless|quick/i,
+    painPoint: "Life Made Easier", benefit: "Effortless to Use", badge: "Easy Use" },
+  // Waterproof / water resistant
+  { pattern: /waterproof|water.?resist|moisture|splash.?proof/i,
+    painPoint: "Rain or Shine Ready", benefit: "Waterproof Protection", badge: "Waterproof" },
+  // Anti-slip / grip
+  { pattern: /anti.?slip|non.?slip|grip|rubber.?feet|no.?skid/i,
+    painPoint: "Stays in Place", benefit: "Anti-Slip Grip", badge: "Non-Slip" },
+  // Gift / gifting
+  { pattern: /gift|present|occasion|birthday|holiday|christmas/i,
+    painPoint: "Perfect Gift Idea", benefit: "Gift-Ready Packaging", badge: "Great Gift" },
+  // Set / complete
+  { pattern: /complete.?set|everything.?you.?need|all.?in.?one|full.?kit/i,
+    painPoint: "Everything You Need", benefit: "Complete Set Included", badge: "Full Set" },
+];
+
+/** Match selling point text to a benefit entry */
+function matchBenefit(text: string): BenefitMatch | null {
+  const lower = text.toLowerCase();
+  for (const entry of BENEFIT_MAP) {
+    if (entry.pattern.test(lower)) return entry;
+  }
+  return null;
+}
+
+// ===== Strategy Engine =====
+
+function inferProductStrategy(analysis: AnalysisResult) {
+  const productName = toEnglish(analysis.productName);
+  const category = toEnglish(analysis.category || "");
+  const sellingPoints = toEnglishArray(analysis.sellingPoints || []);
+  const usageScenes = toEnglishArray(analysis.usageScenes || []);
+  const targetAudience = toEnglishArray(analysis.targetAudience || []);
+  const materials = toEnglish(analysis.materials || "");
+
+  // Match each selling point to a benefit
+  const matched: BenefitMatch[] = [];
+  const usedPatterns = new Set<string>();
+  for (const sp of sellingPoints) {
+    const m = matchBenefit(sp);
+    if (m && !usedPatterns.has(m.painPoint)) {
+      matched.push(m);
+      usedPatterns.add(m.painPoint);
+    }
+  }
+  // Also check materials for extra matches
+  const matMatch = matchBenefit(materials);
+  if (matMatch && !usedPatterns.has(matMatch.painPoint)) {
+    matched.push(matMatch);
+  }
+
+  // Fallback benefits if we didn't match enough
+  const fallbacks: BenefitMatch[] = [
+    { pattern: /^$/, painPoint: "Upgrade Your Routine", benefit: "Premium Quality", badge: "Top Rated" },
+    { pattern: /^$/, painPoint: "Smart Choice", benefit: "Great Value", badge: "Best Seller" },
+    { pattern: /^$/, painPoint: "Life Made Easier", benefit: "Effortless Design", badge: "5-Star Pick" },
+  ];
+  while (matched.length < 3) {
+    matched.push(fallbacks[matched.length] || fallbacks[0]);
+  }
+
+  const scene1 = compactLabel(usageScenes[0] || "everyday use", 5, 32).toLowerCase();
+  const scene2 = compactLabel(usageScenes[1] || usageScenes[0] || "home use", 5, 32).toLowerCase();
+  const audience1 = compactLabel(targetAudience[0] || "everyday users", 3, 24);
+
+  // Pain-point image: headline = customer problem, badges = benefits
+  const painPointHeadline = matched[0].painPoint;
+  const painPointBadge1 = matched[1].badge;
+  const painPointBadge2 = matched[2].badge;
+
+  // Function image: headline = key benefit, badges = supporting features
+  const functionHeadline = matched[1].benefit;
+  const functionBadge1 = matched[0].badge;
+  const functionBadge2 = matched[2].badge;
+
+  // Lifestyle: result headline from scene context
+  const resultHeadline = deriveResultHeadline(scene1, audience1, category);
+
+  // Value: why choose this product
+  const valueHeadline = deriveValueHeadline(category, productName, materials);
+
+  // A+ labels: 3 distinct buying reasons (benefit phrases)
+  const aPlusLabels = uniqueLabels([
+    matched[0].benefit,
+    matched[1].benefit,
+    matched[2].benefit,
+  ]).slice(0, 3);
+
+  // Comparison badges: top 3 unique badges for ours-vs-theirs
+  const comparisonBadges = uniqueLabels([
+    matched[0].badge,
+    matched[1].badge,
+    matched[2].badge,
+  ]).slice(0, 3);
+
+  return {
+    productName,
+    category,
+    sellingPoints,
+    usageScenes,
+    targetAudience,
+    materials,
+    painPointHeadline,
+    painPointBadge1,
+    painPointBadge2,
+    functionHeadline,
+    functionBadge1,
+    functionBadge2,
+    resultHeadline,
+    valueHeadline,
+    aPlusLabels,
+    comparisonBadges,
+    scene1,
+    scene2,
+    audience1,
+  };
+}
+
+function deriveResultHeadline(scene: string, audience: string, category: string): string {
+  // Use CATEGORY (product type) as primary signal, not scene context
+  const cat = category.toLowerCase();
+
+  // Jewelry / accessories — emphasize style & beauty
+  if (/ring|jewel|necklace|bracelet|earring|pendant|charm|accessori|饰品|戒指|项链|手链|耳环/.test(cat)) return "Shine Every Day";
+  if (/watch|手表/.test(cat)) return "Time in Style";
+  if (/bag|purse|wallet|clutch|tote|包|钱包/.test(cat)) return "Carry in Style";
+  if (/hat|cap|scarf|glove|帽|围巾|手套/.test(cat)) return "Style Essential";
+  if (/cloth|dress|shirt|jacket|coat|服装|衣/.test(cat)) return "Wear With Confidence";
+  if (/shoe|boot|sneaker|sandal|鞋|靴/.test(cat)) return "Step Up Your Style";
+
+  // Pet products
+  if (/pet|dog|cat|puppy|kitten|宠物|猫|狗/.test(cat)) return "Pet-Approved";
+
+  // Then fall back to scene-based matching
+  const ctx = `${scene} ${audience} ${category}`.toLowerCase();
+  if (/cook|bak|oven|kitchen|meal|food|grill|bbq|catering/.test(ctx)) return "Meal Prep Made Easy";
+  if (/organiz|storage|clutter|tidy|desk|shelf/.test(ctx)) return "Clutter-Free Living";
+  if (/outdoor|camp|travel|garden|patio|picnic|hik/.test(ctx)) return "Ready for Adventure";
+  if (/fitness|gym|workout|exercise|yoga|health/.test(ctx)) return "Your Fitness Upgrade";
+  if (/office|work|professional|business|meeting/.test(ctx)) return "Work Smarter";
+  if (/family|kid|parent|baby|child|party/.test(ctx)) return "Family Favorite";
+  if (/tech|electronic|computer|phone|gadget|charg/.test(ctx)) return "Tech Essentials";
+  if (/beauty|skin|hair|makeup|grooming/.test(ctx)) return "Look Your Best";
+  if (/home|house|room|living|bedroom/.test(ctx)) return "Home Upgrade";
+  return `Perfect for ${audience}`;
+}
+
+/** Detect if product is small / wearable and needs special framing in lifestyle images */
+function getProductVisibilityRule(category: string, productName: string): string {
+  const ctx = `${category} ${productName}`.toLowerCase();
+
+  // Small wearable items — product MUST be prominent
+  if (/ring|jewel|necklace|bracelet|earring|pendant|charm|watch|戒指|项链|手链|耳环|手表|饰品/.test(ctx)) {
+    return `
+🔍 SMALL PRODUCT VISIBILITY — CRITICAL:
+- This is a SMALL wearable product. It MUST be the visual focal point.
+- Use CLOSE-UP or MEDIUM-CLOSE framing — do NOT shoot full body or wide angle.
+- Frame the shot so the product fills at least 30-40% of the image area.
+- Use shallow depth of field to blur the background and draw attention to the product.
+- Lighting must highlight the product: catch light on metal, sparkle on gems, texture on leather.
+- The person wearing/holding it should be secondary — the PRODUCT is the star.
+- Example framing: hand/wrist close-up for rings/bracelets, neck/collarbone for necklaces, face-side for earrings.
+`;
+  }
+
+  // Small non-wearable items
+  if (/key|pin|badge|button|charm|小|迷你|mini/.test(ctx)) {
+    return `
+🔍 SMALL PRODUCT VISIBILITY:
+- This product is physically small. Ensure it's clearly visible in the scene.
+- Use close or medium framing — avoid wide shots where the product gets lost.
+- The product must fill at least 25% of the image area.
+`;
+  }
+
+  return "";
+}
+
+/** Get scene direction appropriate for the product category */
+function getCategorySceneGuide(category: string, productName: string): string {
+  const ctx = `${category} ${productName}`.toLowerCase();
+
+  if (/ring|jewel|necklace|bracelet|earring|pendant|charm|饰品|戒指|项链|手链|耳环/.test(ctx)) {
+    return `
+🎬 SCENE DIRECTION (Jewelry/Accessories):
+- BEST scenes: getting ready for a date, café moment, garden party, sunset walk, brunch with friends
+- Show the product being WORN in a stylish, aspirational context
+- Background: soft bokeh, warm tones, elegant but not corporate
+- Do NOT use: office/work scenes, gym, kitchen, industrial settings
+- The model should look happy, confident, and stylish — NOT working at a desk
+`;
+  }
+
+  if (/pet|dog|cat|puppy|kitten|宠物|猫|狗/.test(ctx)) {
+    return `
+🎬 SCENE DIRECTION (Pet Products):
+- Show a REAL pet using/wearing the product in a natural setting
+- BEST scenes: living room, backyard, park, cozy couch, pet bed
+- The pet should look happy, comfortable, and safe
+- Owner can be partially visible for scale, but the PET + PRODUCT are the stars
+`;
+  }
+
+  return "";
+}
+
+function deriveValueHeadline(category: string, productName: string, materials: string): string {
+  const ctx = `${category} ${productName} ${materials}`.toLowerCase();
+  if (/aluminum|steel|metal|iron/.test(ctx)) return "Built to Last";
+  if (/food.?grade|bpa.?free|safe|non.?toxic/.test(ctx)) return "Food-Safe Quality";
+  if (/bamboo|wood|natural|organic|eco/.test(ctx)) return "Eco-Friendly Choice";
+  if (/premium|luxury|high.?end/.test(ctx)) return "Premium Choice";
+  if (/pack|set|count|piece/.test(ctx)) return "Best Value Pack";
+  if (/silicone|rubber|flexible/.test(ctx)) return "Flexible & Durable";
+  if (/cotton|fabric|textile|linen/.test(ctx)) return "Soft & Durable";
+  if (/glass|ceramic|porcelain/.test(ctx)) return "Elegant & Sturdy";
+  if (/plastic|resin|polypropylene/.test(ctx)) return "Lightweight & Tough";
+  return `Why Choose ${compactLabel(productName, 2, 16)}`;
+}
+
+// ===== Prompt Building Blocks =====
 
 const mainAngles = [
   "from a slight 3/4 angle showing depth and dimension",
@@ -39,87 +373,48 @@ const mainLighting = [
   "Dramatic studio lighting with one key light creating elegant shadow play",
 ];
 
-const featureLayouts = [
-  "Arrange annotations in a CIRCULAR pattern around the product with curved connector lines",
-  "Place annotations on the LEFT and RIGHT sides of the product with horizontal arrows pointing inward",
-  "Use a TOP-DOWN flow: header at top, product in center, feature callouts radiating outward with dotted lines",
-  "Place the product slightly left of center, with all feature annotations stacked neatly on the right side",
-];
-
 const closeupStyles = [
-  "Use a MAGNIFYING GLASS effect hovering over the product to zoom into material detail",
-  "Use a CIRCULAR ZOOM INSET in the corner showing an extreme close-up of the texture",
-  "Split the image: full product on the left, extreme macro close-up on the right",
-  "Use a diagonal split — upper portion shows the full product, lower portion is an extreme close-up of the surface texture",
+  "Use a circular zoom inset to show one meaningful detail",
+  "Split the image: full product on the left, macro detail on the right",
+  "Use a refined magnifier effect to highlight one premium component",
 ];
 
 const lifestyleMoods = [
-  "GOLDEN HOUR — warm sunset light streaming through large windows, long soft shadows, honey-toned warmth",
-  "BRIGHT MORNING — fresh, crisp daylight with white curtains gently diffusing sunlight, clean and airy",
-  "COZY EVENING — warm lamp light, soft candlelight ambiance, intimate and inviting atmosphere",
-  "NATURAL DAYLIGHT — bright, cheerful midday light with soft shadows, fresh and vibrant energy",
+  "golden-hour warmth with soft natural light",
+  "bright natural daylight with a clean airy feel",
+  "warm editorial home lighting with gentle shadow depth",
 ];
 
 const lifestyleCompositions = [
-  "Product as the hero in the foreground with the scene softly blurred behind (shallow DOF)",
-  "Wide environmental shot showing the full room/space with the product naturally placed as the eye-catching centerpiece",
-  "Over-the-shoulder perspective of someone enjoying the product in their space",
-  "Tight medium shot focusing on the product in use with beautiful bokeh background",
+  "product in the foreground with a softly blurred environment behind it",
+  "medium lifestyle composition with the product clearly readable in use",
+  "wide scene with the product as the visual anchor",
 ];
 
 const multiSceneLayouts = [
-  "2x2 GRID layout — four equal scenes, each with a different mood and setting",
-  "HERO + THUMBNAILS — one large main scene on top, 2-3 smaller scenes in a row below",
-  "TRIPTYCH — three vertical panels side by side, each a different scenario",
-  "DIAGONAL SPLIT — two large triangular scenes divided by a clean diagonal line",
+  "HERO + THUMBNAILS — one large main scene on top, 2-3 smaller scenes below",
+  "TRIPTYCH — three clean vertical panels with consistent spacing",
+  "TWO CLEAN PANELS — one hero lifestyle panel plus one supporting use-case panel",
+  "DIAGONAL SPLIT — two elegant scenes divided by a clean diagonal line",
 ];
 
-// Pain-point marketing angles for lifestyle images — gives buyers a REASON to purchase
-const painPointAngles = [
-  "BEFORE vs AFTER: Show the contrast — the dull/boring/messy space WITHOUT the product vs the beautiful/upgraded space WITH the product. The viewer should immediately see the transformation.",
-  "PROBLEM → SOLUTION: Show a common frustration the target customer faces (e.g., boring decor, uncomfortable experience, lack of style) and how THIS product is the perfect solution.",
-  "GIFTING MOMENT: Show someone receiving or gifting this product — wrapped beautifully or being presented. Convey that this is a PERFECT GIFT that will delight the recipient.",
-  "UPGRADE YOUR SPACE: Show a stylish, aspirational space where this product is the KEY element that ties everything together. Without it, the space would feel incomplete.",
-];
-
-// Diverse scene environments — prevents repetitive same-room shots
-const sceneEnvironments = [
-  "Modern minimalist living room with large windows and natural light",
-  "Cozy bedroom with soft textiles, warm lamp light, and a relaxing atmosphere",
-  "Bright, airy kitchen or dining area with fresh morning energy",
-  "Stylish home office or study with plants and creative decor",
-  "Outdoor patio or balcony with garden views and natural greenery",
-  "Elegant entryway or hallway that sets the tone for the whole home",
-  "Romantic dinner table setting with candles and warm ambiance",
-  "Modern bathroom vanity or spa-like relaxation corner",
-];
+// ===== Main Plan Generator =====
 
 export function generatePlans(
   analysis: AnalysisResult,
   imageTypes: ImageType[],
   salesRegion: SalesRegion = "us"
 ): ImagePlan[] {
-  const { sellingPoints, materials, colors, usageScenes, targetAudience, estimatedDimensions, category } = analysis;
-
-  // Convert ALL fields to English first (used as base for prompts)
-  const productName = toEnglish(analysis.productName);
-  const enSellingPoints = toEnglishArray(sellingPoints);
-  const enScenes = toEnglishArray(usageScenes);
-  const enAudience = toEnglishArray(targetAudience);
-  const enMaterials = toEnglish(materials);
-  const enColors = toEnglish(colors);
-
-  // Region config
   const regionConfig = REGION_CONFIGS[salesRegion];
   const imageLanguage = regionToLanguage(salesRegion);
   const targetLang = LANGUAGE_ENGLISH_NAMES[imageLanguage] || "English";
+
   const langRule = imageLanguage === "en"
     ? "ALL text on the image MUST be in ENGLISH."
     : imageLanguage === "zh"
-    ? "ALL text on the image MUST be in CHINESE (中文). Write all headers, labels, and annotations in Chinese."
-    : `ALL text on the image MUST be in ${targetLang.toUpperCase()}. Write all headers, labels, and annotations in ${targetLang}.`;
+    ? "ALL text on the image MUST be in CHINESE (中文)."
+    : `ALL text on the image MUST be in ${targetLang.toUpperCase()}.`;
 
-  // Regional style rules injected into all prompts
   const regionStyleRule = `
 🎨 REGIONAL STYLE — ${regionConfig.label}:
 - Photography style: ${regionConfig.styleGuide}
@@ -128,314 +423,457 @@ export function generatePlans(
 - Color tone: ${regionConfig.colorTone}
 `;
 
-  const sp1 = enSellingPoints[0] || "Premium Quality";
-  const sp2 = enSellingPoints[1] || "Durable Design";
-  const sp3 = enSellingPoints[2] || "Easy to Use";
-  const scene1 = enScenes[0] || "everyday use";
-  const scene2 = enScenes[1] || enScenes[0] || "professional use";
-  const audience1 = enAudience[0] || "everyday consumers";
-  const audience2 = enAudience[1] || enAudience[0] || "professionals";
+  const cleanCornerRule = `
+🚫 CLEAN CORNERS RULE:
+- No watermark, logo, signature, seal, or decorative corner icon
+- Keep all four corners completely clean
+`;
+
+  const productIdentityRule = `
+🔒 PRODUCT IDENTITY RULE:
+- This is a real retail product, not an abstract decor object
+- Preserve the original product purpose, structure, and practical identity
+`;
+
+  const structureLockRule = `
+🔒 STRUCTURE LOCK RULE:
+- Keep the exact outer silhouette, slots, openings, compartments from the reference
+- Do not add, remove, or redesign any structural parts
+`;
+
+  const strategy = inferProductStrategy(analysis);
+  const { productName } = strategy;
+
+  const brandSystemRule = `
+🎯 LISTING SYSTEM RULE:
+- Use short conversion-first headlines, not editorial slogans
+- At most 1 headline and 2 tiny badges per support image
+- Clean white or light-neutral backgrounds
+- Bold, simple typography easy to scan on mobile
+- Each image communicates ONE core buying reason
+`;
+
+  const strictSingleProductRule = `
+🔒 SINGLE PRODUCT RULE:
+- Show only the real product from the reference
+- Do not generate comparison products, exploded parts, or duplicates
+- Do not invent accessories, filler props, or fake package contents
+- Do NOT add fictional props (magnifying glasses, rulers, pointers, etc.)
+`;
+
+  const humanAnatomyRule = `
+🚨 HUMAN ANATOMY — CRITICAL:
+- If people appear in the image, their hands and fingers MUST have correct anatomy
+- Hands must have exactly 5 fingers each with natural proportions and joints
+- Do NOT show close-up hands holding/wearing the product if it risks deformed fingers
+- PREFER: show people from a wider angle (waist-up, full body) to minimize hand detail issues
+- PREFER: show the product in use WITHOUT focusing on hand/finger close-ups
+- If the product is worn on hands (rings, bracelets, gloves), show from a distance where minor hand imperfections are less visible
+- All human body proportions must look natural — no extra limbs, merged fingers, or distorted joints
+`;
+
+  const textSafeZoneRule = `
+🚨 TEXT SAFE ZONE — CRITICAL:
+- ALL text must stay inside a safe zone with at least 40px padding from every edge
+- Text must NEVER be cut off, cropped, or overflow the image boundary
+- Center text horizontally; avoid placing text in corners or at the very edge
+- Use a semi-transparent overlay behind text if needed for readability
+- If text is long, use a smaller font — do NOT let it extend beyond the safe zone
+`;
 
   return imageTypes.map((imageType) => {
     switch (imageType) {
       case "main":
         return {
           imageType,
-          title: "核心主图 - 白底产品展示",
-          description: `${productName}居中展示，纯白背景，产品占85%画面，展示完整外观和核心结构，专业摄影棚灯光。`,
-          prompt: `Create a professional Amazon product listing main image for this exact product.
+          title: "Hero image",
+          description: `${productName} — clean premium hero on white background.`,
+          validationNotes: ["one product only", "white background only", "no text on hero image"],
+          prompt: `Create a premium Amazon hero image for ${productName}.
 
-🔒 PRODUCT FIDELITY RULE: The generated product must be a FAITHFUL reproduction of the reference image(s). Match the EXACT shape, color, texture, material, stitching, edges, and proportions. Do NOT alter, stylize, or "improve" the product appearance.
+⚠️ ${langRule}
+${cleanCornerRule}
+${productIdentityRule}
+${structureLockRule}
+🔒 Show ONLY ONE product. Match the reference exactly in shape, color, material, finish, and proportions.
 
-CAMERA ANGLE: ${pickRandom(mainAngles)}
-LIGHTING: ${pickRandom(mainLighting)}
+🚨 HERO IMAGE — CRITICAL RULES:
+- Show the product in its FULLY ASSEMBLED, ready-to-use state
+- Do NOT show disassembled parts, screws, accessories, or components laid out separately
+- Do NOT create a "what's included" flat-lay — that belongs in the packaging image, NOT the hero
+- The product must look like something you'd pick up and USE, not a parts diagram
+- If the product has multiple components, show them ASSEMBLED together as one unit
 
-REQUIREMENTS:
-- Pure white background (RGB 255,255,255), absolutely clean
-- Show ONLY ONE product — do NOT duplicate or show multiple copies
-- Product centered, occupying 85% of the frame
-- Sharp, crisp product edges
-- NO text, NO logos, NO watermarks, NO annotations, NO props, NO dimension lines or measurements
-- CRITICAL: Maintain the product's REAL-WORLD size proportions. Do NOT exaggerate or distort the product dimensions
-- High-end commercial e-commerce photography quality
-- 800x800px square format
+COMPOSITION:
+- Pure white background (#FFFFFF)
+- Center the product with elegant whitespace
+- Product should fill approximately 85% of the frame
+- ${pickRandom(mainAngles)}
+- ${pickRandom(mainLighting)}
+- Add a subtle, soft shadow beneath the product for grounding (not floating)
 
-This is the HERO image - it must be clean, professional, and make the product look premium.`,
+RULES:
+- No text, no icons, no props, no extra objects
+- No dimension lines, no duplicate products
+- No loose screws, tools, or packaging materials
+- Keep real-world proportions
+- 800x800px
+
+STYLE:
+- High-end e-commerce photography — the kind that makes you click "Add to Cart"
+- Crisp edges, soft refined shadow
+- Premium but believable product rendering
+- The product should look solid, substantial, and desirable`,
         };
 
       case "features":
         return {
           imageType,
-          title: "功能卖点图 - 核心功能标注",
-          description: `展示${productName}的核心功能：${sp1}、${sp2}、${sp3}，带有功能标注箭头和图标说明。`,
-          prompt: `Create a product FEATURE SHOWCASE image for this ${productName} for Amazon listing.
+          title: "Pain-point / benefit image",
+          description: `${productName} — addresses customer pain point and shows the product as the solution.`,
+          validationNotes: ["headline is a question or problem statement", "max 2 badges", "single product only"],
+          prompt: `Create a PAIN-POINT image for ${productName} that makes the customer think "I need this!"
 
 ⚠️ ${langRule}
+${cleanCornerRule}
+${productIdentityRule}
+${structureLockRule}
+${textSafeZoneRule}
+🔒 Show ONE product only. Match the reference product exactly.
 
-🔒 PRODUCT FIDELITY RULE: The product in this image must look EXACTLY like the reference photos — same shape, color, texture, material. Do NOT alter the product appearance. Show ONLY ONE product.
+CONCEPT:
+- This image addresses a CUSTOMER PROBLEM and shows the product as the SOLUTION
+- The headline names the pain point the customer recognizes from daily life
+- The customer should feel: "Yes, that's exactly my problem — and this product fixes it!"
 
-LAYOUT STYLE: ${pickRandom(featureLayouts)}
-- Show ONLY ONE product on a clean, light gradient background
-- Include ICON LABELS with SHORT feature descriptions IN ENGLISH
+VISUAL STORYTELLING:
+- Show a subtle before/after or problem→solution contrast
+- Product is the HERO — it's the answer to the problem
+- Clean background, product as focal point
+- Strong whitespace, premium feel
 
-KEY FEATURES TO HIGHLIGHT (translate to English if not already):
-1. "${sp1}" - with arrow pointing to the relevant product area
-2. "${sp2}" - with arrow pointing to the relevant area
-3. "${sp3}" - with arrow pointing to the relevant area
-
-HEADER TEXT at top: English translation of "${sp1}" (main selling point as headline)
-SUB-HEADER: ONE short sentence (max 8 words) IN ENGLISH
-
-⚠️ TEXT DENSITY RULE — CRITICAL:
-- Keep ALL text SHORT and CONCISE — maximum 3-5 words per label
-- Header: max 6 words. Sub-header: max 8 words.
-- Each feature label: max 5 words (e.g., "Lightweight & Breathable", "Durable Construction")
-- Do NOT write full sentences or paragraphs on the image
-- WHITE SPACE is important — leave breathing room between text elements
-- Fewer words = more impact. If in doubt, use fewer words.
+TEXT RULES:
+- EXACT headline text (copy verbatim, do not modify): "${strategy.painPointHeadline}"
+- EXACT badge texts (copy verbatim): "${strategy.painPointBadge1}", "${strategy.painPointBadge2}"
+- ⚠️ Do NOT invent, rephrase, or expand the text above. Use ONLY these exact words.
+- No paragraph text, no long descriptions
 
 STYLE:
-- Clean, modern infographic layout with plenty of white space
-- Professional product photography with overlay annotations
-- Use clean icons and thin annotation lines/arrows
-- Colors: product-appropriate color scheme with ${enColors} tones
-- CRITICAL: Maintain REALISTIC product size proportions - do not exaggerate dimensions
-- Premium commercial quality, 800x800px
-- ${langRule}
-
-Do NOT add dimension lines, measurement annotations, or size specifications. Focus ONLY on features and selling points.`,
+- Premium Amazon listing image
+- Bold, clear headline typography
+- 800x800px`,
         };
 
       case "closeup":
         return {
           imageType,
-          title: "细节特写图 - 材质与工艺",
-          description: `${productName}材质特写，展示${enMaterials}的质感和工艺细节，配放大镜效果或局部截取。`,
-          prompt: `Create a CLOSE-UP DETAIL image for this ${productName} for Amazon listing.
+          title: "Why-it's-better detail image",
+          description: `${productName} — shows WHY this product is better, giving the customer a reason to choose it.`,
+          validationNotes: ["one headline only", "max 2 micro labels", "benefit-focused"],
+          prompt: `Create a BENEFIT-FOCUSED detail image for ${productName}.
 
 ⚠️ ${langRule}
+${cleanCornerRule}
+${productIdentityRule}
+${structureLockRule}
+${textSafeZoneRule}
+🔒 Show ONLY ONE product. Keep the product identical to the reference.
 
-🔒 CRITICAL — SINGLE PRODUCT ONLY: Show ONLY ONE product. Do NOT show two or more copies of the product. If you want to show different sides/angles, use a MAGNIFYING GLASS or ZOOM CIRCLE overlay on the SAME single product — do NOT place multiple separate products side by side.
+CONCEPT:
+- This image answers: "Why should I buy THIS one instead of the cheaper alternative?"
+- Show the quality difference the customer can FEEL through the image
+- The headline states a clear BENEFIT, not just a feature name
+- Close-up detail proves the quality claim visually
 
-🔒 PRODUCT FIDELITY RULE: The product must look EXACTLY like the reference photos — same shape, color shade, texture, material, stitching pattern. Do NOT change the product color or appearance.
+🚫 NO FICTIONAL PROPS:
+- Do NOT add magnifying glasses, rulers, hands pointing, arrows, or any props not in the reference
+- Do NOT add visual gimmicks — let the product photography speak for itself
+- Only the product and its REAL components/accessories should appear
+- Use camera zoom/crop to show detail, NOT illustrated props
 
-LAYOUT & CLOSE-UP STYLE: ${pickRandom(closeupStyles)}
-- Show ONE product — the close-up detail should clearly reveal the ${enMaterials} texture, stitching, or craftsmanship
+LAYOUT:
+- ${pickRandom(closeupStyles)}
+- Zoom into the detail that proves the benefit: material thickness, reinforced edges, premium finish
+- Use actual macro photography style — get close to the product surface
 
-TEXT ELEMENTS (ALL IN ENGLISH):
-- Header: "PREMIUM ${materials.toUpperCase()} QUALITY" or similar English text
-- Sub-text highlighting durability and craftsmanship in English
-- 2-3 small icon labels in English describing material properties
-- ⚠️ CRITICAL: Every label must be UNIQUE — do NOT repeat the same text or phrase twice. Each label must describe a DIFFERENT property (e.g., one for material, one for durability, one for comfort). Double-check before finalizing.
+TEXT RULES:
+- EXACT headline text (copy verbatim, do not modify): "${strategy.functionHeadline}"
+- EXACT label texts (copy verbatim): "${strategy.functionBadge1}", "${strategy.functionBadge2}"
+- ⚠️ Do NOT invent, rephrase, or expand the text above. Use ONLY these exact words.
 
 STYLE:
-- Dramatic side lighting to emphasize surface texture
-- Shallow depth of field for professional feel
-- Clean background (light gradient or subtle)
-- The detail shot should convince customers of premium build quality
-- CRITICAL: Maintain REALISTIC product size proportions
-- 800x800px, commercial product photography quality
-- ${langRule}
-- Do NOT add dimension lines or measurement annotations`,
+- Premium close-up product photography
+- Shallow depth of field, refined lighting
+- Clean background
+- 800x800px`,
         };
 
       case "dimensions":
         return {
           imageType,
-          title: "尺寸规格图 - 精确尺寸标注",
-          description: `${productName}尺寸标注（${estimatedDimensions}），带测量线和数值，搭配实际使用参照物展示大小。`,
-          prompt: `Create a DIMENSIONS & SIZE REFERENCE image for this ${productName} for Amazon listing.
+          title: "Size guide",
+          description: `${productName} — clear dimensions to eliminate sizing doubts.`,
+          validationNotes: ["max 4 dimension labels", "overall size first"],
+          prompt: `Create a refined dimensions image for ${productName}.
 
 ⚠️ ${langRule}
-
-🔒 PRODUCT FIDELITY RULE: The product must look EXACTLY like the reference photos. Show ONLY ONE product.
+🔒 Show ONLY ONE product. Keep the product identical to the reference.
 
 LAYOUT:
-- Product shown clearly on a clean white/light gray background
-- Add clear dimension annotation lines with arrows for all important measurements
-- Dimension values: ${estimatedDimensions}
-- Show measurement lines with arrows on both ends, clean technical style
-- Mark length, width, height, and any other key dimensions clearly
+- Minimal white or pale gray background
+- Show one full product view clearly
+- Overall dimensions: length, width, height
+- Maximum 4 total dimension labels
+- Thin clean measurement lines
+- Strong whitespace
 
-OPTIONAL: Size reference
-- If helpful, show a size reference (e.g., held in hand, next to common objects) to help customer understand real-world scale
-
-TEXT ELEMENTS (ALL IN ENGLISH):
-- Dimension values and units clearly labeled (e.g., "12.5 inches", "30 cm")
-- Optional header: "DIMENSIONS" or "SIZE GUIDE"
+TEXT RULES:
+- Short labels only
+- Small header: "Size Guide"
+- Match these values: ${analysis.estimatedDimensions}
 
 STYLE:
-- Clean, professional technical illustration style
-- Technical but approachable design
-- Precise measurement annotations with clear dimension values
-- Professional quality, 800x800px
-- ${langRule}`,
+- Premium brand size-guide look
+- Elegant, restrained, easy to scan on mobile
+- 800x800px`,
         };
 
-      case "lifestyle":
+      case "sizeChart": {
+        const variants = analysis.sizeVariants || [];
+        const sizeTableRows = variants.length > 0
+          ? variants.map((v) => `| ${v.size} | ${v.dimensions} | ${v.suitableFor} |`).join("\n")
+          : "| S | Small | Suitable for small |\n| M | Medium | Suitable for medium |\n| L | Large | Suitable for large |";
+        const colHeaders = variants.length > 0
+          ? "Size | Dimensions | Suitable For"
+          : "Size | Dimensions | Suitable For";
         return {
           imageType,
-          title: "使用场景图 - 痛点解决与购买理由",
-          description: `面向${audience1}，展示${productName}如何解决客户痛点。场景：${scene1}。突出产品卖点：${sp1}，给客户必须购买的理由。`,
-          prompt: `Create a LIFESTYLE SCENE image showing this ${productName} in a beautiful, aspirational setting for Amazon listing.
+          title: "Multi-size chart",
+          description: `${productName} — size comparison table for multi-variant products.`,
+          validationNotes: ["clear table layout", "all sizes visible", "easy to read on mobile"],
+          prompt: `Create a professional SIZE CHART image for ${productName}.
+
+⚠️ ${langRule}
+${textSafeZoneRule}
+🔒 Show the product identical to the reference photo. Do NOT invent fictional products.
+
+PURPOSE: Help buyers choose the right size. This is a SIZE COMPARISON TABLE image.
+
+LAYOUT:
+- Clean white or very light background
+- TOP SECTION (40%): Show the product photo (same as reference) with a small visual showing how sizing works (e.g., small vs large version side by side, or the product on different sized subjects)
+- BOTTOM SECTION (60%): A CLEAR, READABLE TABLE with the following data:
+
+| ${colHeaders} |
+|---|---|---|
+${sizeTableRows}
+
+TABLE DESIGN RULES:
+- Clean grid lines, alternating row colors (white + light gray)
+- Header row: bold, colored background (soft blue or brand-appropriate)
+- Font size MUST be large enough to read on mobile (minimum 16pt equivalent)
+- Left-align text, center numbers
+- Round corners on the table
+- Each column has adequate padding
+
+STYLE:
+- Professional infographic style
+- Match Amazon listing quality
+- 800x800px square
+- NO fictional props, NO extra decorations
+- The table must be the HERO element — buyers should immediately see the size options`,
+        };
+      }
+
+      case "lifestyle": {
+        const visibilityRule = getProductVisibilityRule(strategy.category, strategy.productName);
+        const sceneGuide = getCategorySceneGuide(strategy.category, strategy.productName);
+        return {
+          imageType,
+          title: "Lifestyle / usage scene",
+          description: `${productName} — shows the product in real-world use, making the buyer envision owning it.`,
+          validationNotes: ["one headline only", "single hero scene", "adult only"],
+          prompt: `Create a premium lifestyle image for ${productName}.
 
 ⚠️ ${langRule}
 ${regionStyleRule}
+${cleanCornerRule}
+${productIdentityRule}
+${structureLockRule}
+${textSafeZoneRule}
+🔒 Show the exact product from the reference in realistic use. Adults only.
+${humanAnatomyRule}
+${visibilityRule}
+${sceneGuide}
 
-🔒 PRODUCT FIDELITY RULE: The product in this scene must look EXACTLY like the reference photos — same shape, color, texture, material. Do NOT alter, redesign, or change the product appearance. The product must be visually identical to the reference.
+SCENE:
+- Real-world scenario: ${strategy.scene1}
+- Target customer: ${strategy.audience1}
+- Mood: ${pickRandom(lifestyleMoods)}
+- Composition: ${pickRandom(lifestyleCompositions)}
+- The product must be clearly visible and being USED (not just sitting there)
+- Show the RESULT of using the product — the customer's life is better
+- ⚠️ The scene MUST match the product category — do NOT put fashion items in office scenes or jewelry in kitchens
 
-🔒 CORRECT USAGE RULE: Show the product being used in its CORRECT, INTENDED way. Study the reference images to understand HOW this product is meant to be used.
-
-🎨 ATMOSPHERE & MOOD RULE — THIS IS CRITICAL:
-This image must evoke EMOTION and DESIRE. It should look like a page from a high-end lifestyle magazine, NOT a generic product placement photo.
-
-MOOD: ${pickRandom(lifestyleMoods)}
-COMPOSITION: ${pickRandom(lifestyleCompositions)}
-ENVIRONMENT: ${regionConfig.sceneStyle}
-
-- Apply SHALLOW DEPTH OF FIELD (bokeh) — the background should have a beautiful, creamy blur
-- Color grading: warm tones, slightly desaturated shadows, luminous highlights
-- If the product is decorative (flowers, art, decor): make it look STUNNING and ALIVE — render artificial flowers as if they were FRESH, REAL flowers with natural petal softness and organic beauty
-
-SCENE: ${scene1}
-TARGET AUDIENCE: ${audience1}
-
-💰 PURCHASE MOTIVATION — WHY SHOULD THE CUSTOMER BUY THIS?
-MARKETING ANGLE: ${pickRandom(painPointAngles)}
-
-KEY SELLING POINT: "${sp1}" (translate to English if not already)
-Additional benefits: "${sp2}", "${sp3}" (translate to English if not already)
-
-The image must answer the customer's question: "Why do I NEED this?" Show them:
-- How this product TRANSFORMS their space, experience, or daily life
-- The EMOTIONAL BENEFIT — joy, comfort, pride, relaxation, style upgrade
-- A clear BEFORE→AFTER feeling: life is BETTER with this product
-
-Add a SHORT, punchy English text overlay (max 6 words) that communicates the key benefit — like a magazine headline that makes people stop scrolling. Examples: "Transform Your Space", "The Perfect Gift", "Effortless Elegance", "Make It Yours"
-
-REQUIREMENTS:
-- Show the product NATURALLY INTEGRATED into the scene
-- The product must be the CLEAR FOCAL POINT
-- CRITICAL: Maintain REALISTIC product size proportions
-- Only show ADULTS (18+ years old) — NO children, babies, or minors
-- ${langRule}
+TEXT RULES:
+- EXACT headline text (copy verbatim, do not modify): "${strategy.resultHeadline}"
+- ⚠️ Do NOT invent, rephrase, or expand the text above. Use ONLY these exact words.
+- No subtitle, no extra labels
 
 STYLE:
-- HIGH-END editorial lifestyle photography (Architectural Digest, Elle Decor quality)
-- Cinematic color grading with warm, rich tones
-- Beautiful bokeh and shallow depth of field
-- Soft, directional lighting that creates mood and depth
-- 800x800px, premium editorial photography quality
-- ${langRule}
-- Do NOT add dimension lines or measurement annotations on this image`,
+- Aspirational lifestyle photography
+- Warm natural lighting
+- Soft depth of field
+- The customer should think: "I want that life"
+- 800x800px`,
         };
+      }
 
       case "packaging":
         return {
           imageType,
-          title: "包装配件图 - 开箱内容展示",
-          description: `${productName}包装内容展示，仅展示参考图中可见的物品，整齐排列，鸟瞰角度。`,
-          prompt: `Create a PACKAGE CONTENTS / WHAT'S INCLUDED image for this ${productName} for Amazon listing.
+          title: "Value / why-choose image",
+          description: `${productName} — convinces the buyer this is the best option in its category.`,
+          validationNotes: ["no invented accessories", "competitive edge focus"],
+          prompt: `Create a premium value-differentiation image for ${productName}.
+Material: ${strategy.materials}
 
 ⚠️ ${langRule}
+${cleanCornerRule}
+${productIdentityRule}
+${structureLockRule}
+${textSafeZoneRule}
+🔒 Show only the actual product from the reference.
 
-🚫🚫🚫 ABSOLUTE RULE — DO NOT ADD ANY ITEMS 🚫🚫🚫
-You MUST ONLY show items that are CLEARLY VISIBLE in the reference product images provided.
-- Do NOT invent, imagine, add, or fabricate ANY accessories, cables, manuals, user guides, boxes, bags, straps, tools, adapters, chargers, or ANY other items
-- Do NOT add items that "typically come with" this type of product
-- Do NOT assume what might be in the package
-- If only the main product is visible in the reference images, show ONLY the main product — just ONE single item in the center
-- Count the items in the reference images — the generated image must contain the EXACT SAME number of items, nothing more, nothing less
-
-🔒 PRODUCT FIDELITY RULE: The product must look EXACTLY like the reference photos — same shape, color, texture, material.
+GOAL:
+- Show why THIS product beats the generic alternatives
+- Highlight material quality, quantity/count value, or unique design advantage
+- Make the customer feel they're getting MORE for their money
 
 LAYOUT:
-- Overhead / bird's eye view flat-lay arrangement
-- Main product prominently in CENTER
-- ONLY arrange items that appear in the reference images — NOTHING ELSE
-- Each item clearly visible and labeled IN ENGLISH
-- Maintain REALISTIC size proportions between items
+- Elegant top-down or structured display
+- Product as visual hero
+- Clean premium spacing
 
-TEXT ELEMENTS (ALL IN ENGLISH):
-- Header: "WHAT'S INCLUDED"
-- Label each visible item with English text annotations
+TEXT RULES:
+- EXACT headline text (copy verbatim, do not modify): "${strategy.valueHeadline}"
+- Up to two support labels highlighting concrete advantages (e.g., material, count, certification)
+- ⚠️ Do NOT invent, rephrase, or expand the headline above. Use ONLY these exact words for the headline.
+- No "What You Get" framing, no long explanations
 
 STYLE:
-- Clean, light surface (white, light wood, or marble)
-- Overhead flat-lay photography style
-- Soft, even lighting from above
-- Instagram-worthy organized layout
-- Premium unboxing experience feel
-- 800x800px, commercial photography quality
-- ${langRule}
-- Do NOT add dimension lines or measurement annotations on this image`,
+- Premium comparison/value image
+- Clean surface, balanced spacing
+- Feels polished and trustworthy
+- 800x800px`,
         };
 
       case "lifestyle2":
         return {
           imageType,
-          title: "多场景应用图 - 多元化使用展示",
-          description: `${productName}在多种场景中的丰富应用，面向不同人群（${audience1}、${audience2}），展示多元化使用方式和购买价值。`,
-          prompt: `Create a MULTI-SCENARIO LIFESTYLE image for this ${productName} for Amazon listing.
+          title: "A+ closing — 3 buying reasons",
+          description: `${productName} — final persuasive image showing 3 distinct reasons to buy NOW.`,
+          validationNotes: ["2-3 scenes only", "one label per scene", "each label is a buying reason"],
+          prompt: `Create a premium A+ closing image for ${productName} — the FINAL image that convinces the customer to click "Add to Cart".
 
 ⚠️ ${langRule}
 ${regionStyleRule}
+${cleanCornerRule}
+${productIdentityRule}
+${structureLockRule}
+${strictSingleProductRule}
+${brandSystemRule}
+${textSafeZoneRule}
+🔒 Keep the product identical to the reference in every panel. Adults only.
+${humanAnatomyRule}
 
-🔒 PRODUCT FIDELITY RULE: The product in EVERY scene must look EXACTLY like the reference photos — same shape, color, texture, material. Do NOT alter, redesign, or change the product appearance in any scene.
+CONCEPT:
+- This image gives the customer 3 clear REASONS TO BUY
+- Each panel shows THE SAME PRODUCT (from reference) in a different use context
+- After seeing this image, the customer should have no doubts left
 
-🔒 CORRECT USAGE RULE: In EVERY scene, the product must be used in its CORRECT, INTENDED way. Study the reference images to understand the proper usage method.
+🚨 CRITICAL — PRODUCT CONSISTENCY:
+- EVERY panel must show the EXACT SAME product from the reference photos
+- Do NOT substitute, replace, or swap the product with any other item
+- Do NOT add unrelated products (no phone holders, no other accessories)
+- If the product is a bottle cage, show ONLY a bottle cage in every panel
+- Each panel = same product, different angle or usage scenario
 
-🎨 ATMOSPHERE & MOOD RULE — CRITICAL FOR EVERY SCENE:
-Each scene must be EMOTIONALLY compelling and VISUALLY stunning:
-- Use CINEMATIC LIGHTING in every scene — golden hour glow, soft window light, warm ambient tones
-- Apply SHALLOW DEPTH OF FIELD (bokeh) — dreamy blurred backgrounds that make the product pop
-- Each scene should feel like a MOVIE STILL or HIGH-END MAGAZINE PHOTO, not a generic stock image
-- Color grading: warm, rich, slightly cinematic tones — think lifestyle influencer photography
-- If the product is decorative (flowers, art, decor): render it as BEAUTIFUL and ALIVE as possible. Artificial flowers should look like FRESH, REAL blooms — lush, vibrant, with natural organic beauty
-- Every scene should make the viewer think "I want that life"
+LAYOUT:
+- ${pickRandom(multiSceneLayouts)}
+- Show 2 or 3 scenes only
+- Each panel: the product in action + one benefit label
+- Product visible and recognizable in every scene
 
-💰 MARKETING STRATEGY — GIVE BUYERS MULTIPLE REASONS TO PURCHASE:
-Each scene must answer a DIFFERENT version of "Why should I buy this?"
+SCENES (each = one buying reason):
+1. "${strategy.aPlusLabels[0]}" — ${strategy.scene1}
+2. "${strategy.aPlusLabels[1]}" — product detail or feature close-up
+3. "${strategy.aPlusLabels[2]}" — ${strategy.scene2}
 
-Target audiences: ${audience1}, ${audience2} (translate to English if not already)
-Product strengths: ${sp1}, ${sp2}, ${sp3} (translate to English if not already)
-
-LAYOUT: ${pickRandom(multiSceneLayouts)}
-
-SCENES — each must show a UNIQUE purchase reason:
-1. 🏠 "${scene1}" — Show the product enhancing daily life in a ${regionConfig.sceneStyle.split(".")[0]} setting. Text overlay: a short benefit headline (max 5 words)
-2. 🎁 GIFTING / SPECIAL OCCASION — Show the product as a thoughtful gift or in a celebration/holiday/birthday setting. This appeals to gift-buyers (a huge market). Text overlay: e.g., "The Perfect Gift"
-3. 💼 "${scene2}" — Show a DIFFERENT person/demographic using the product in a completely different environment. Text overlay: a different benefit angle
-4. ✨ VERSATILITY / MULTI-USE — Show the product used in an unexpected or creative way that expands its perceived value. Text: e.g., "More Than You Think"
-
-Each scene MUST have:
-- A SHORT English text overlay (max 5 words) highlighting that scene's unique purchase reason
-- A DIFFERENT environment, lighting mood, and person/demographic
-- The product used CORRECTLY
-
-REQUIREMENTS:
-- CRITICAL: Maintain REALISTIC product size proportions in every scene
-- Show ADULT people (18+ only) — NO children, babies, or minors
-- EVERY scene must look like a DIFFERENT photo shoot — different location, different model, different time of day
-- ${langRule}
+TEXT RULES:
+- EXACT label per scene (copy verbatim, do not modify): "${strategy.aPlusLabels[0]}", "${strategy.aPlusLabels[1]}", "${strategy.aPlusLabels[2]}"
+- ⚠️ Do NOT invent, rephrase, or expand any label. Use ONLY these exact words.
+- No subtitles, no paragraphs, no placeholders
 
 STYLE:
-- Each scene: HIGH-END editorial lifestyle photography quality
-- Rich, warm, cinematic color grading in every panel
-- Beautiful bokeh and atmospheric lighting throughout
-- 800x800px, premium editorial quality
-- ${langRule}
-- Do NOT add dimension lines or measurement annotations
+- Premium brand A+ visual module
+- Warm editorial lighting
+- Clean scene separation with consistent borders
+- Elegant, conversion-focused composition
+- 800x800px`,
+        };
 
-The goal: after seeing this image, the customer should think "I can use this for SO many things — I need to buy it NOW."`,
+      case "comparison":
+        return {
+          imageType,
+          title: "对比优势图 — Ours vs Theirs",
+          description: `${productName} — side-by-side comparison showing why our product wins.`,
+          validationNotes: ["no real brand names", "left=ours right=generic", "max 4 comparison rows"],
+          prompt: `Create a COMPARISON image for ${productName} — "Ours vs. Ordinary" side-by-side.
+
+⚠️ ${langRule}
+${cleanCornerRule}
+${productIdentityRule}
+${textSafeZoneRule}
+🔒 Left side: the REAL product from the reference. Right side: a GENERIC plain version (no real brand).
+
+CONCEPT:
+- Split the image into LEFT ("Ours" ✓) and RIGHT ("Ordinary" ✗)
+- The customer instantly sees WHY our product is the better choice
+- Use green checkmarks ✓ on the left, red crosses ✗ on the right
+- Show 3-4 key differences that matter to the buyer
+
+COMPARISON POINTS (pick 3-4 that apply):
+- "${strategy.painPointHeadline}" — our product solves this, the generic doesn't
+- "${strategy.comparisonBadges[0]}" vs generic equivalent
+- "${strategy.comparisonBadges[1]}" vs generic equivalent
+- "${strategy.comparisonBadges[2] || "Premium Quality"}" vs generic equivalent
+
+LAYOUT:
+- Clean white background
+- Two columns: LEFT = our product (bright, premium), RIGHT = generic (dull, cheap-looking)
+- Header: "Ours" / "Ordinary" or "Premium" / "Basic"
+- 3-4 comparison rows with icons (✓ / ✗)
+- Strong visual contrast: our side looks premium, their side looks cheap
+
+TEXT RULES:
+- Short labels only (2-3 words per comparison point)
+- ⚠️ Do NOT use any real brand names — use "Ordinary" or "Basic" for the generic side
+- No paragraphs or long descriptions
+
+STYLE:
+- Clean Amazon comparison infographic
+- Bold, scannable on mobile
+- High contrast between the two sides
+- 800x800px`,
         };
 
       default:
         return {
           imageType,
           title: IMAGE_TYPE_LABELS[imageType],
-          description: `${productName}专业产品图`,
-          prompt: `Create a professional product photography image for this ${productName}. Clean background, professional studio lighting. Premium commercial feel. 800x800px.`,
+          description: `${productName} professional product image`,
+          prompt: `Create a professional product image for ${productName}. Clean background. Premium commercial look. 800x800px.`,
         };
     }
   });

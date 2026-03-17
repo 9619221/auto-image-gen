@@ -2,16 +2,20 @@
 
 import { useCallback, useRef } from "react";
 import { Upload, Loader2, X, Plus, Globe } from "lucide-react";
-import type { SalesRegion } from "@/lib/types";
+import type { SalesRegion, ProductMode } from "@/lib/types";
 import { REGION_CONFIGS, REGION_ORDER } from "@/lib/types";
 
 const MAX_IMAGES = 5;
 
-export type ProductMode = "single" | "bundle";
+export type { ProductMode };
+export interface UploadImageItem {
+  file: File;
+  previewUrl: string;
+}
 
 interface ImageUploaderProps {
-  images: string[];
-  onImagesChange: (images: string[]) => void;
+  images: UploadImageItem[];
+  onImagesChange: (images: UploadImageItem[]) => void;
   isProcessing: boolean;
   onSubmit: () => void;
   productMode: ProductMode;
@@ -39,28 +43,22 @@ export default function ImageUploader({
 
       const toProcess = Array.from(files)
         .filter((f) => f.type.startsWith("image/"))
-        .slice(0, remaining);
+        .slice(0, remaining)
+        .map((file) => ({ file, previewUrl: URL.createObjectURL(file) }));
 
-      let loaded = 0;
-      const newImages: string[] = [];
-
-      toProcess.forEach((file) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          newImages.push(e.target?.result as string);
-          loaded++;
-          if (loaded === toProcess.length) {
-            onImagesChange([...images, ...newImages]);
-          }
-        };
-        reader.readAsDataURL(file);
-      });
+      if (toProcess.length > 0) {
+        onImagesChange([...images, ...toProcess]);
+      }
     },
     [images, onImagesChange]
   );
 
   const removeImage = useCallback(
     (index: number) => {
+      const item = images[index];
+      if (item?.previewUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(item.previewUrl);
+      }
       onImagesChange(images.filter((_, i) => i !== index));
     },
     [images, onImagesChange]
@@ -79,44 +77,48 @@ export default function ImageUploader({
 
   return (
     <div className="w-full space-y-4">
-      {/* Upload area - shown when no images yet */}
       {!hasImages && (
-        <label
-          className={`relative flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-2xl cursor-pointer transition-all border-[var(--color-border-default)] hover:border-indigo-400 bg-gradient-to-b from-[var(--color-accent-subtle)] to-transparent ${
+        <div
+          className={`relative flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-2xl transition-all border-[var(--color-border-default)] hover:border-indigo-400 bg-gradient-to-b from-[var(--color-accent-subtle)] to-transparent ${
             isProcessing ? "opacity-60 pointer-events-none" : ""
           }`}
           onDragOver={(e) => e.preventDefault()}
           onDrop={handleDrop}
         >
-          <div className="flex flex-col items-center gap-3 text-slate-500">
+          <div className="flex flex-col items-center gap-3 text-slate-500 px-6">
             <div className="p-3 bg-gradient-to-br from-indigo-500 to-violet-500 rounded-2xl shadow-lg shadow-indigo-200 transition-transform hover:scale-105">
               <Upload className="w-8 h-8 text-white" />
             </div>
             <div className="text-center">
-              <p className="font-semibold text-slate-700">
-                拖拽商品图片到此处
-              </p>
+              <p className="font-semibold text-slate-700">拖拽商品图片到此处</p>
               <p className="text-sm text-slate-400 mt-1">
                 支持多张图片（最多 {MAX_IMAGES} 张），适合组合装/套装
               </p>
             </div>
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              className="btn-accent px-5 py-2.5 text-sm"
+              disabled={isProcessing}
+            >
+              选择图片
+            </button>
           </div>
           <input
             ref={inputRef}
             type="file"
             accept="image/*"
             multiple
-            className="hidden"
+            className="sr-only"
             onChange={(e) => {
               if (e.target.files) addFiles(e.target.files);
               e.target.value = "";
             }}
             disabled={isProcessing}
           />
-        </label>
+        </div>
       )}
 
-      {/* Image grid - shown after upload */}
       {hasImages && (
         <div
           className="premium-card p-5"
@@ -124,12 +126,9 @@ export default function ImageUploader({
           onDrop={handleDrop}
         >
           <div className="flex items-center justify-between mb-3">
-            <p className="text-sm text-slate-500">
-              已上传 {images.length}/{MAX_IMAGES} 张商品图
-            </p>
+            <p className="text-sm text-slate-500">已上传 {images.length}/{MAX_IMAGES} 张商品图</p>
           </div>
 
-          {/* Product Mode Selector */}
           {images.length > 1 && (
             <div className="mb-4 p-3 rounded-xl bg-gradient-to-r from-slate-50 to-indigo-50/50 border border-slate-200">
               <p className="text-xs text-slate-500 mb-2 font-medium">请选择拍摄模式：</p>
@@ -143,9 +142,7 @@ export default function ImageUploader({
                   }`}
                 >
                   📷 单品多角度
-                  <span className="block text-xs mt-0.5 opacity-80">
-                    同一商品的不同角度照片
-                  </span>
+                  <span className="block text-xs mt-0.5 opacity-80">同一商品的不同角度照片</span>
                 </button>
                 <button
                   onClick={() => onProductModeChange("bundle")}
@@ -156,9 +153,7 @@ export default function ImageUploader({
                   }`}
                 >
                   📦 套装组合
-                  <span className="block text-xs mt-0.5 opacity-80">
-                    多件不同商品组合销售
-                  </span>
+                  <span className="block text-xs mt-0.5 opacity-80">多件不同商品组合销售</span>
                 </button>
               </div>
             </div>
@@ -167,11 +162,11 @@ export default function ImageUploader({
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
             {images.map((img, idx) => (
               <div
-                key={idx}
+                key={`${img.file.name}-${idx}`}
                 className="relative aspect-square rounded-xl border border-[var(--color-border-subtle)] overflow-hidden group bg-white hover:shadow-lg transition-shadow"
               >
                 <img
-                  src={img}
+                  src={img.previewUrl}
                   alt={`商品 ${idx + 1}`}
                   className="w-full h-full object-contain p-1"
                 />
@@ -189,26 +184,18 @@ export default function ImageUploader({
               </div>
             ))}
 
-            {/* Add more button */}
             {images.length < MAX_IMAGES && !isProcessing && (
-              <label className="aspect-square rounded-xl border-2 border-dashed border-[var(--color-border-default)] flex flex-col items-center justify-center cursor-pointer hover:border-indigo-400 hover:bg-[var(--color-accent-subtle)] transition-all">
+              <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                className="aspect-square rounded-xl border-2 border-dashed border-[var(--color-border-default)] flex flex-col items-center justify-center cursor-pointer hover:border-indigo-400 hover:bg-[var(--color-accent-subtle)] transition-all"
+              >
                 <Plus className="w-6 h-6 text-slate-400" />
                 <span className="text-xs text-slate-400 mt-1">添加</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => {
-                    if (e.target.files) addFiles(e.target.files);
-                    e.target.value = "";
-                  }}
-                />
-              </label>
+              </button>
             )}
           </div>
 
-          {/* Sales Region Selector */}
           <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-slate-50 to-blue-50/50 border border-slate-200">
             <div className="flex items-center gap-2 mb-3">
               <Globe className="w-4 h-4 text-blue-500" />
@@ -240,7 +227,6 @@ export default function ImageUploader({
             </div>
           </div>
 
-          {/* Submit button */}
           <div className="mt-4 flex justify-center">
             <button
               onClick={onSubmit}

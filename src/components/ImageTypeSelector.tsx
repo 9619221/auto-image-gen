@@ -12,6 +12,18 @@ export default function ImageTypeSelector({
   selected,
   onChange,
 }: ImageTypeSelectorProps) {
+  const helperText: Record<ImageType, string> = {
+    main: '高点击主图',
+    features: '痛点解决方案',
+    closeup: '细节与品质感',
+    dimensions: '尺寸说明',
+    sizeChart: '多规格尺寸表',
+    lifestyle: '场景使用图',
+    packaging: '差异化价值',
+    comparison: '我们 vs 普通产品',
+    lifestyle2: 'A+多场景收束',
+  };
+
   const toggle = (type: ImageType) => {
     if (selected.includes(type)) {
       onChange(selected.filter((t) => t !== type));
@@ -59,6 +71,9 @@ export default function ImageTypeSelector({
             <div className="text-xs text-slate-400 mb-1">#{idx + 1}</div>
             <div className="text-sm font-medium text-slate-800">
               {IMAGE_TYPE_LABELS[type]}
+            </div>
+            <div className="text-[11px] text-slate-400 mt-1">
+              {helperText[type]}
             </div>
             {selected.includes(type) && (
               <div className="absolute top-2 right-2 w-5 h-5 bg-gradient-to-br from-indigo-500 to-violet-500 rounded-full flex items-center justify-center shadow-md">

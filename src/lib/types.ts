@@ -3,18 +3,22 @@ export type ImageType =
   | "features"
   | "closeup"
   | "dimensions"
+  | "sizeChart"
   | "lifestyle"
   | "packaging"
-  | "lifestyle2";
+  | "lifestyle2"
+  | "comparison";
 
 export const IMAGE_TYPE_LABELS: Record<ImageType, string> = {
-  main: "主图",
-  features: "功能卖点图",
-  closeup: "细节特写图",
+  main: "主图（Hero）",
+  features: "痛点/卖点图",
+  closeup: "功能/结构图",
   dimensions: "尺寸规格图",
-  lifestyle: "场景图",
-  packaging: "包装配件图",
-  lifestyle2: "场景图 2",
+  sizeChart: "多规格尺寸表",
+  lifestyle: "场景结果图",
+  packaging: "差异化价值图",
+  lifestyle2: "A+ 收束图",
+  comparison: "对比优势图",
 };
 
 export const IMAGE_TYPE_ORDER: ImageType[] = [
@@ -22,10 +26,18 @@ export const IMAGE_TYPE_ORDER: ImageType[] = [
   "features",
   "closeup",
   "dimensions",
+  "sizeChart",
   "lifestyle",
   "packaging",
+  "comparison",
   "lifestyle2",
 ];
+
+export interface SizeVariant {
+  size: string;           // e.g. "S", "M", "L", "XL"
+  dimensions: string;     // e.g. "18cm/7.08in"
+  suitableFor: string;    // e.g. "0.5-2kg/1.10-4.41lb"
+}
 
 export interface AnalysisResult {
   productName: string;
@@ -36,6 +48,7 @@ export interface AnalysisResult {
   targetAudience: string[];
   usageScenes: string[];
   estimatedDimensions: string;
+  sizeVariants?: SizeVariant[];
 }
 
 export interface ImagePlan {
@@ -43,6 +56,7 @@ export interface ImagePlan {
   title: string;
   description: string;
   prompt: string;
+  validationNotes?: string[];
 }
 
 // ===== Sales Region System =====
@@ -225,4 +239,14 @@ export interface GenerationJob {
   status: "pending" | "generating" | "done" | "error";
   finalImageUrl?: string;
   error?: string;
+}
+
+export interface ImageScore {
+  clarity: number;
+  composition: number;
+  textQuality: number;
+  compliance: number;
+  appeal: number;
+  overall: number;
+  suggestions: string[];
 }

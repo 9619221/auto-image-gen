@@ -1,14 +1,27 @@
-import { NextRequest } from "next/server";
-import { generateProductImage } from "@/lib/fal";
+import { NextRequest, NextResponse } from "next/server";
+import { generateProductImage } from "@/lib/image-gen";
+import { validatePlan } from "@/lib/generation-guard";
+import { filesToDataUrls } from "@/lib/server-image";
+import { validateUploadedFiles } from "@/lib/validate-upload";
+import { authenticateRequest } from "@/lib/api-auth";
 import type { ImagePlan, AnalysisLanguage } from "@/lib/types";
 
+const CONCURRENCY = 8;
+
 export async function POST(req: NextRequest) {
-  const { plans, originalImages, productMode = "single", imageLanguage = "en" } = (await req.json()) as {
-    plans: ImagePlan[];
-    originalImages: string[];
-    productMode?: "single" | "bundle";
-    imageLanguage?: AnalysisLanguage;
-  };
+  const authError = authenticateRequest(req);
+  if (authError) return authError;
+
+  const formData = await req.formData();
+  const validation = validateUploadedFiles(formData);
+  if (!validation.ok) {
+    return NextResponse.json({ error: validation.error }, { status: 400 });
+  }
+
+  const plans = JSON.parse(String(formData.get("plans") || "[]")) as ImagePlan[];
+  const productMode = String(formData.get("productMode") || "single") as "single" | "bundle";
+  const imageLanguage = String(formData.get("imageLanguage") || "en") as AnalysisLanguage;
+  const originalImages = await filesToDataUrls(validation.files);
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -17,21 +30,28 @@ export async function POST(req: NextRequest) {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
       }
 
-      for (const plan of plans) {
+      async function processPlan(plan: ImagePlan) {
         try {
+          const planValidation = validatePlan(plan);
+          if (planValidation.warnings.length > 0) {
+            send({ imageType: plan.imageType, status: "warning", warnings: planValidation.warnings });
+          }
+
           send({ imageType: plan.imageType, status: "generating" });
 
           const imageDataUrl = await generateProductImage(
             originalImages,
             plan.prompt,
             productMode,
-            imageLanguage
+            imageLanguage,
+            plan.imageType
           );
 
           send({
             imageType: plan.imageType,
             status: "done",
             imageUrl: imageDataUrl,
+            warnings: planValidation.warnings,
           });
         } catch (error) {
           send({
@@ -40,6 +60,12 @@ export async function POST(req: NextRequest) {
             error: error instanceof Error ? error.message : "生成失败",
           });
         }
+      }
+
+      // Process plans in batches of CONCURRENCY
+      for (let i = 0; i < plans.length; i += CONCURRENCY) {
+        const batch = plans.slice(i, i + CONCURRENCY);
+        await Promise.all(batch.map(processPlan));
       }
 
       send({ status: "complete" });

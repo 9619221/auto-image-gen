@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "亚马逊商品图片生成器",
+  title: "亚马逊商品图片生成器（开发版）",
   description:
-    "AI 自动生成亚马逊产品 listing 全套图片。上传商品照片，一键生成 7 张专业 listing 图。",
+    "开发版：用于模板调优、标签测试、方案编辑和回归验证。",
 };
 
 export default function RootLayout({

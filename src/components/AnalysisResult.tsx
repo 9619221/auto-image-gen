@@ -1,7 +1,7 @@
 "use client";
 
-import type { AnalysisResult as AnalysisResultType } from "@/lib/types";
-import { Package, Users, MapPin, Ruler, Palette, Sparkles, Pencil, Plus, X } from "lucide-react";
+import type { AnalysisResult as AnalysisResultType, SizeVariant } from "@/lib/types";
+import { Package, Users, MapPin, Ruler, Palette, Sparkles, Pencil, Plus, X, LayoutGrid } from "lucide-react";
 
 interface AnalysisResultProps {
   analysis: AnalysisResultType;
@@ -236,6 +236,79 @@ export default function AnalysisResult({
             </div>
           ))}
         </div>
+      </div>
+      {/* Size Variants */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-xs uppercase tracking-wide font-medium text-slate-400 flex items-center">
+            <LayoutGrid className="w-3.5 h-3.5 mr-1" />
+            多规格尺寸（可选）
+          </label>
+          <button
+            onClick={() => {
+              const variants = [...(analysis.sizeVariants || []), { size: "", dimensions: "", suitableFor: "" }];
+              onChange({ ...analysis, sizeVariants: variants });
+            }}
+            className="inline-flex items-center gap-1 text-xs text-indigo-500 hover:text-indigo-700 font-medium transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            添加规格
+          </button>
+        </div>
+        {(!analysis.sizeVariants || analysis.sizeVariants.length === 0) ? (
+          <p className="text-xs text-slate-400">
+            如果商品有多个尺码（S/M/L/XL），AI会自动识别。也可手动添加。
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {analysis.sizeVariants.map((sv: SizeVariant, i: number) => (
+              <div key={i} className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={sv.size}
+                  onChange={(e) => {
+                    const arr = [...(analysis.sizeVariants || [])];
+                    arr[i] = { ...arr[i], size: e.target.value };
+                    onChange({ ...analysis, sizeVariants: arr });
+                  }}
+                  className="input-premium w-16"
+                  placeholder="尺码"
+                />
+                <input
+                  type="text"
+                  value={sv.dimensions}
+                  onChange={(e) => {
+                    const arr = [...(analysis.sizeVariants || [])];
+                    arr[i] = { ...arr[i], dimensions: e.target.value };
+                    onChange({ ...analysis, sizeVariants: arr });
+                  }}
+                  className="input-premium flex-1"
+                  placeholder="尺寸 (如: 18cm/7.08in)"
+                />
+                <input
+                  type="text"
+                  value={sv.suitableFor}
+                  onChange={(e) => {
+                    const arr = [...(analysis.sizeVariants || [])];
+                    arr[i] = { ...arr[i], suitableFor: e.target.value };
+                    onChange({ ...analysis, sizeVariants: arr });
+                  }}
+                  className="input-premium flex-1"
+                  placeholder="适用范围 (如: 2-4kg)"
+                />
+                <button
+                  onClick={() => {
+                    const arr = (analysis.sizeVariants || []).filter((_: SizeVariant, idx: number) => idx !== i);
+                    onChange({ ...analysis, sizeVariants: arr });
+                  }}
+                  className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

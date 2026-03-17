@@ -1,23 +1,34 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import ImageUploader from "@/components/ImageUploader";
-import type { ProductMode } from "@/components/ImageUploader";
+import type { UploadImageItem } from "@/components/ImageUploader";
+import type { ProductMode } from "@/lib/types";
 import AnalysisResultComponent from "@/components/AnalysisResult";
 import ImageTypeSelector from "@/components/ImageTypeSelector";
 import ImagePlanEditor from "@/components/ImagePlanEditor";
 import ResultGallery from "@/components/ResultGallery";
-import { IMAGE_TYPE_ORDER, regionToLanguage } from "@/lib/types";
-import type { AnalysisResult, ImageType, ImagePlan, GenerationJob, SalesRegion } from "@/lib/types";
+import MobilePreview from "@/components/MobilePreview";
+import ImageOrderOptimizer from "@/components/ImageOrderOptimizer";
+import { IMAGE_TYPE_ORDER, IMAGE_TYPE_LABELS, regionToLanguage } from "@/lib/types";
+import type { AnalysisResult, ImageType, ImagePlan, GenerationJob, SalesRegion, ImageScore } from "@/lib/types";
 import { generatePlans } from "@/lib/prompt-templates";
-import { Loader2, Zap, RotateCcw, ArrowRight } from "lucide-react";
+import { Loader2, Zap, RotateCcw, ArrowRight, History, X, Type, Copy, Check } from "lucide-react";
 
 type Step = "upload" | "review" | "plan" | "generate" | "results";
+
+interface HistoryMeta {
+  id: string;
+  timestamp: number;
+  productName: string;
+  salesRegion: string;
+  imageCount: number;
+}
 
 export default function Home() {
   const [step, setStep] = useState<Step>("upload");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [originalImages, setOriginalImages] = useState<string[]>([]);
+  const [originalImages, setOriginalImages] = useState<UploadImageItem[]>([]);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [selectedTypes, setSelectedTypes] = useState<ImageType[]>([
     ...IMAGE_TYPE_ORDER,
@@ -29,16 +40,94 @@ export default function Home() {
   const [salesRegion, setSalesRegion] = useState<SalesRegion>("us");
   const [error, setError] = useState<string | null>(null);
 
+  // 标题生成
+  const [generatedTitles, setGeneratedTitles] = useState<{ label: string; title: string }[]>([]);
+  const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+
+  // 图片评分（从 ResultGallery 回传）
+  const [imageScores, setImageScores] = useState<Record<string, ImageScore>>({});
+
+  // 历史记录
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyList, setHistoryList] = useState<HistoryMeta[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  const appendImagesToFormData = (formData: FormData, images: UploadImageItem[]) => {
+    images.forEach((item) => {
+      formData.append("images", item.file, item.file.name);
+    });
+  };
+
+  // 加载历史列表
+  const loadHistoryList = useCallback(async () => {
+    setLoadingHistory(true);
+    try {
+      const res = await fetch("/api/history");
+      const data = await res.json();
+      if (Array.isArray(data)) setHistoryList(data);
+    } catch { /* ignore */ }
+    setLoadingHistory(false);
+  }, []);
+
+  // 查看历史记录详情
+  const loadHistoryEntry = useCallback(async (id: string) => {
+    setLoadingHistory(true);
+    try {
+      const res = await fetch(`/api/history?id=${id}`);
+      const data = await res.json();
+      if (data.images) {
+        const loadedJobs: GenerationJob[] = data.images.map((img: { imageType: string; imageUrl: string }) => ({
+          imageType: img.imageType as ImageType,
+          status: "done" as const,
+          finalImageUrl: img.imageUrl,
+        }));
+        setJobs(loadedJobs);
+        setStep("results");
+        setShowHistory(false);
+        setAnalysis({ productName: data.productName } as AnalysisResult);
+      }
+    } catch {
+      setError("加载历史记录失败");
+    }
+    setLoadingHistory(false);
+  }, []);
+
+  // 保存到历史
+  const saveToHistory = useCallback(async () => {
+    const completedJobs = jobs.filter((j) => j.status === "done" && j.finalImageUrl);
+    if (completedJobs.length === 0) return;
+
+    try {
+      await fetch("/api/history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productName: analysis?.productName || "未命名商品",
+          salesRegion,
+          imageCount: completedJobs.length,
+          images: completedJobs.map((j) => ({
+            imageType: j.imageType,
+            imageUrl: j.finalImageUrl,
+          })),
+        }),
+      });
+    } catch { /* ignore save errors */ }
+  }, [jobs, analysis, salesRegion]);
+
   const handleAnalyze = useCallback(async () => {
     if (originalImages.length === 0) return;
     setIsProcessing(true);
     setError(null);
 
     try {
+      const formData = new FormData();
+      appendImagesToFormData(formData, originalImages);
+      formData.append("productMode", productMode);
+
       const res = await fetch("/api/analyze", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ images: originalImages, productMode }),
+        body: formData,
       });
       const data = await res.json();
 
@@ -77,6 +166,7 @@ export default function Home() {
 
     setIsGenerating(true);
     setStep("generate");
+    setGeneratedTitles([]);
 
     const initialJobs: GenerationJob[] = plans.map((p) => ({
       imageType: p.imageType,
@@ -84,17 +174,33 @@ export default function Home() {
     }));
     setJobs(initialJobs);
 
-    try {
-      const response = await fetch("/api/generate", {
+    // 标题与图片并行生成
+    if (analysis) {
+      setIsGeneratingTitle(true);
+      fetch("/api/title", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          plans,
-          originalImages,
-          productMode,
-          imageLanguage: regionToLanguage(salesRegion),
-          salesRegion,
-        }),
+        body: JSON.stringify({ analysis, salesRegion }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.titles) setGeneratedTitles(data.titles);
+        })
+        .catch(() => {})
+        .finally(() => setIsGeneratingTitle(false));
+    }
+
+    try {
+      const formData = new FormData();
+      appendImagesToFormData(formData, originalImages);
+      formData.append("plans", JSON.stringify(plans));
+      formData.append("productMode", productMode);
+      formData.append("imageLanguage", regionToLanguage(salesRegion));
+      formData.append("salesRegion", salesRegion);
+
+      const response = await fetch("/api/generate", {
+        method: "POST",
+        body: formData,
       });
 
       const reader = response.body?.getReader();
@@ -113,7 +219,12 @@ export default function Home() {
 
         for (const line of lines) {
           if (!line.startsWith("data: ")) continue;
-          const data = JSON.parse(line.slice(6));
+          let data: Record<string, unknown>;
+          try {
+            data = JSON.parse(line.slice(6));
+          } catch {
+            continue;
+          }
 
           if (data.status === "complete") {
             setStep("results");
@@ -126,9 +237,9 @@ export default function Home() {
               if (job.imageType !== data.imageType) return job;
               return {
                 ...job,
-                status: data.status,
-                finalImageUrl: data.imageUrl || job.finalImageUrl,
-                error: data.error,
+                status: data.status as GenerationJob["status"],
+                finalImageUrl: (data.imageUrl as string) || job.finalImageUrl,
+                error: data.error as string | undefined,
               };
             })
           );
@@ -138,9 +249,34 @@ export default function Home() {
       setError(err instanceof Error ? err.message : "生成失败");
       setIsGenerating(false);
     }
-  }, [originalImages, plans, productMode, salesRegion]);
+  }, [originalImages, plans, productMode, salesRegion, analysis]);
+
+  // 生成完成后自动保存历史
+  useEffect(() => {
+    if (step === "results" && !isGenerating) {
+      saveToHistory();
+    }
+  }, [step, isGenerating, saveToHistory]);
+
+  // 单张重新生成回调
+  const handleJobUpdate = useCallback((imageType: string, update: Partial<GenerationJob>) => {
+    setJobs((prev) =>
+      prev.map((job) => (job.imageType === imageType ? { ...job, ...update } : job))
+    );
+  }, []);
+
+  const copyTitle = (text: string, idx: number) => {
+    navigator.clipboard.writeText(text);
+    setCopiedIdx(idx);
+    setTimeout(() => setCopiedIdx(null), 2000);
+  };
 
   const handleReset = () => {
+    originalImages.forEach((item) => {
+      if (item.previewUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(item.previewUrl);
+      }
+    });
     setStep("upload");
     setOriginalImages([]);
     setAnalysis(null);
@@ -150,11 +286,11 @@ export default function Home() {
     setSelectedTypes([...IMAGE_TYPE_ORDER]);
     setProductMode("single");
     setSalesRegion("us");
+    setGeneratedTitles([]);
   };
 
   return (
     <main className="min-h-screen">
-      {/* Header */}
       <header className="glass-card sticky top-0 z-50 border-b border-[var(--color-border-subtle)]">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div>
@@ -162,30 +298,89 @@ export default function Home() {
               亚马逊商品图片生成器
             </h1>
             <p className="text-sm text-slate-400">
-              上传商品照片 &rarr; AI 自动生成 7 张 listing 图片
+              AI 智能生成高转化率 Listing 图片
             </p>
           </div>
-          {step !== "upload" && (
+          <div className="flex items-center gap-2">
+            {/* 历史记录按钮 */}
             <button
-              onClick={handleReset}
+              onClick={() => { setShowHistory(true); loadHistoryList(); }}
               className="btn-ghost flex items-center gap-2 px-4 py-2 text-sm"
             >
-              <RotateCcw className="w-4 h-4" />
-              重新开始
+              <History className="w-4 h-4" />
+              历史记录
             </button>
-          )}
+            {step !== "upload" && (
+              <button
+                onClick={handleReset}
+                className="btn-ghost flex items-center gap-2 px-4 py-2 text-sm"
+              >
+                <RotateCcw className="w-4 h-4" />
+                重新开始
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
-      {/* Progress Steps */}
+      {/* 历史记录面板 */}
+      {showHistory && (
+        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+              <h2 className="text-lg font-bold text-slate-900">生成历史</h2>
+              <button onClick={() => setShowHistory(false)} className="p-1 hover:bg-slate-100 rounded-lg">
+                <X className="w-5 h-5 text-slate-400" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[60vh]">
+              {loadingHistory ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+                </div>
+              ) : historyList.length === 0 ? (
+                <p className="text-center text-slate-400 py-8">暂无历史记录</p>
+              ) : (
+                <div className="space-y-3">
+                  {historyList.map((entry) => (
+                    <button
+                      key={entry.id}
+                      onClick={() => loadHistoryEntry(entry.id)}
+                      className="w-full text-left p-4 rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/30 transition-all"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-slate-800 text-sm">{entry.productName}</span>
+                        <span className="text-xs text-slate-400">
+                          {new Date(entry.timestamp).toLocaleDateString("zh-CN", {
+                            month: "numeric",
+                            day: "numeric",
+                            hour: "numeric",
+                            minute: "numeric",
+                          })}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-slate-400">{entry.imageCount} 张图片</span>
+                        <span className="text-xs text-slate-300">·</span>
+                        <span className="text-xs text-slate-400">{entry.salesRegion.toUpperCase()}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-6xl mx-auto px-6 py-4">
         <div className="flex items-center gap-2 text-sm">
           {[
-            { key: "upload", label: "1. 上传" },
-            { key: "review", label: "2. 商品分析" },
-            { key: "plan", label: "3. 方案确认" },
-            { key: "generate", label: "4. 生成" },
-            { key: "results", label: "5. 下载" },
+            { key: "upload", label: "1. 上传图片" },
+            { key: "review", label: "2. AI 分析" },
+            { key: "plan", label: "3. 确认方案" },
+            { key: "generate", label: "4. 生成图片" },
+            { key: "results", label: "5. 下载结果" },
           ].map((s, i) => {
             const stepOrder = ["upload", "review", "plan", "generate", "results"];
             const currentIdx = stepOrder.indexOf(step);
@@ -210,7 +405,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Content */}
       <div className="max-w-6xl mx-auto px-6 pb-12 space-y-6">
         {error && (
           <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-sm animate-fade-in-up">
@@ -218,7 +412,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* Step 1: Upload */}
         {step === "upload" && (
           <div className="max-w-2xl mx-auto animate-fade-in-up">
             <ImageUploader
@@ -237,7 +430,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* Step 2: Review analysis + select types */}
         {step === "review" && analysis && (
           <div className="animate-fade-in-up space-y-6">
             {originalImages.length > 0 && (
@@ -249,7 +441,7 @@ export default function Home() {
                   {originalImages.map((img, idx) => (
                     <img
                       key={idx}
-                      src={img}
+                      src={img.previewUrl}
                       alt={`商品 ${idx + 1}`}
                       className="w-28 h-28 object-contain rounded-xl border border-[var(--color-border-subtle)] hover:shadow-lg transition-shadow"
                     />
@@ -281,7 +473,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* Step 3: Plan review */}
         {step === "plan" && plans.length > 0 && (
           <div className="animate-fade-in-up space-y-6">
             <ImagePlanEditor plans={plans} onChange={setPlans} />
@@ -304,7 +495,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* Step 4 & 5: Generation progress + Results */}
         {(step === "generate" || step === "results") && (
           <div className="animate-fade-in-up space-y-6">
             {isGenerating && (
@@ -321,7 +511,88 @@ export default function Home() {
             <ResultGallery
               jobs={jobs}
               productName={analysis?.productName || "商品"}
+              plans={plans}
+              originalImages={originalImages.map((img) => img.file)}
+              productMode={productMode}
+              imageLanguage={regionToLanguage(salesRegion)}
+              onJobUpdate={handleJobUpdate}
+              onScoresChange={setImageScores}
             />
+
+            {/* 标题生成结果（与图片并行生成） */}
+            {(isGeneratingTitle || generatedTitles.length > 0) && (
+              <div className="premium-card p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <Type className="w-5 h-5 text-violet-500" />
+                    商品标题
+                  </h3>
+                </div>
+
+                {isGeneratingTitle && (
+                  <div className="flex items-center justify-center gap-2 py-4">
+                    <Loader2 className="w-5 h-5 animate-spin text-violet-500" />
+                    <span className="text-sm text-violet-500">标题生成中...</span>
+                  </div>
+                )}
+
+                {generatedTitles.length > 0 && (
+                  <div className="space-y-3">
+                    {generatedTitles.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="p-4 rounded-xl border border-[var(--color-border-subtle)] hover:border-violet-300 transition-colors"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-medium text-violet-600 bg-violet-50 px-2 py-0.5 rounded-md">
+                            {item.label}
+                          </span>
+                          <button
+                            onClick={() => copyTitle(item.title, idx)}
+                            className="flex items-center gap-1 text-xs text-slate-400 hover:text-violet-600 transition-colors"
+                          >
+                            {copiedIdx === idx ? (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-emerald-500" />
+                                <span className="text-emerald-500">已复制</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3.5 h-3.5" />
+                                复制
+                              </>
+                            )}
+                          </button>
+                        </div>
+                        <p className="text-sm text-slate-700 leading-relaxed break-all">
+                          {item.title}
+                        </p>
+                        <p className="text-[11px] text-slate-400 mt-1">
+                          {item.title.length} 字符
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {step === "results" && !isGenerating && (
+              <>
+                <div className="flex items-center justify-center gap-3">
+                  <MobilePreview jobs={jobs} />
+                  <span className="text-xs text-slate-400">
+                    不满意？悬浮图片点击 🔄 可单张重新生成
+                  </span>
+                </div>
+
+                {/* 图片顺序优化 */}
+                <ImageOrderOptimizer
+                  scores={imageScores}
+                  imageTypes={jobs.map((j) => j.imageType)}
+                />
+              </>
+            )}
           </div>
         )}
       </div>

@@ -1,13 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import { analyzeProduct } from "@/lib/gemini";
+import { analyzeProduct } from "@/lib/analyze";
+import { filesToDataUrls } from "@/lib/server-image";
+import { validateUploadedFiles } from "@/lib/validate-upload";
+import { authenticateRequest } from "@/lib/api-auth";
 
 export async function POST(req: NextRequest) {
+  const authError = authenticateRequest(req);
+  if (authError) return authError;
+
   try {
-    const { images, productMode } = await req.json();
-    if (!images || !Array.isArray(images) || images.length === 0) {
-      return NextResponse.json({ error: "No images provided" }, { status: 400 });
+    const formData = await req.formData();
+    const validation = validateUploadedFiles(formData);
+    if (!validation.ok) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
     }
-    const analysis = await analyzeProduct(images, productMode || "single");
+
+    const productMode = String(formData.get("productMode") || "single");
+    const images = await filesToDataUrls(validation.files);
+    const analysis = await analyzeProduct(images, productMode);
     return NextResponse.json(analysis);
   } catch (error) {
     console.error("Analysis error:", error);
