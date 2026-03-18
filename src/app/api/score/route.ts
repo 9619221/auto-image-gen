@@ -22,7 +22,6 @@ const IMAGE_TYPE_CRITERIA: Record<string, string> = {
   lifestyle: "This is a LIFESTYLE/SCENE image. Key criteria: realistic usage context, relatable setting, product is clearly visible in scene, aspirational but believable.",
   packaging: "This is a PACKAGING/VALUE image. Key criteria: shows what's included, clear value proposition, professional arrangement, highlights bundle/package contents.",
   comparison: "This is a COMPARISON image (Ours vs Ordinary). Key criteria: clear side-by-side, obvious visual advantage, fair but favorable comparison, readable labels.",
-  sizeChart: "This is a SIZE CHART image for a multi-variant product. Key criteria: clear table layout, all sizes visible and readable, font size large enough for mobile, professional infographic style, accurate data presentation.",
   lifestyle2: "This is an A+ LIFESTYLE closing image. Key criteria: multiple benefit showcase, aspirational lifestyle, cohesive visual story, strong closing impression.",
 };
 

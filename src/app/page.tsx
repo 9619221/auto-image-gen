@@ -30,9 +30,9 @@ export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [originalImages, setOriginalImages] = useState<UploadImageItem[]>([]);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
-  const [selectedTypes, setSelectedTypes] = useState<ImageType[]>([
-    ...IMAGE_TYPE_ORDER,
-  ]);
+  const [selectedTypes, setSelectedTypes] = useState<ImageType[]>(
+    [...IMAGE_TYPE_ORDER]
+  );
   const [plans, setPlans] = useState<ImagePlan[]>([]);
   const [jobs, setJobs] = useState<GenerationJob[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);

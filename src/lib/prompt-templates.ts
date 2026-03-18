@@ -638,53 +638,6 @@ STYLE:
 - 800x800px`,
         };
 
-      case "sizeChart": {
-        const variants = analysis.sizeVariants || [];
-        const sizeTableRows = variants.length > 0
-          ? variants.map((v) => `| ${v.size} | ${v.dimensions} | ${v.suitableFor} |`).join("\n")
-          : "| S | Small | Suitable for small |\n| M | Medium | Suitable for medium |\n| L | Large | Suitable for large |";
-        const colHeaders = variants.length > 0
-          ? "Size | Dimensions | Suitable For"
-          : "Size | Dimensions | Suitable For";
-        return {
-          imageType,
-          title: "Multi-size chart",
-          description: `${productName} — size comparison table for multi-variant products.`,
-          validationNotes: ["clear table layout", "all sizes visible", "easy to read on mobile"],
-          prompt: `Create a professional SIZE CHART image for ${productName}.
-
-⚠️ ${langRule}
-${textSafeZoneRule}
-🔒 Show the product identical to the reference photo. Do NOT invent fictional products.
-
-PURPOSE: Help buyers choose the right size. This is a SIZE COMPARISON TABLE image.
-
-LAYOUT:
-- Clean white or very light background
-- TOP SECTION (40%): Show the product photo (same as reference) with a small visual showing how sizing works (e.g., small vs large version side by side, or the product on different sized subjects)
-- BOTTOM SECTION (60%): A CLEAR, READABLE TABLE with the following data:
-
-| ${colHeaders} |
-|---|---|---|
-${sizeTableRows}
-
-TABLE DESIGN RULES:
-- Clean grid lines, alternating row colors (white + light gray)
-- Header row: bold, colored background (soft blue or brand-appropriate)
-- Font size MUST be large enough to read on mobile (minimum 16pt equivalent)
-- Left-align text, center numbers
-- Round corners on the table
-- Each column has adequate padding
-
-STYLE:
-- Professional infographic style
-- Match Amazon listing quality
-- 800x800px square
-- NO fictional props, NO extra decorations
-- The table must be the HERO element — buyers should immediately see the size options`,
-        };
-      }
-
       case "lifestyle": {
         const visibilityRule = getProductVisibilityRule(strategy.category, strategy.productName);
         const sceneGuide = getCategorySceneGuide(strategy.category, strategy.productName);

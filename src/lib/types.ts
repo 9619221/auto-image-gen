@@ -3,7 +3,6 @@ export type ImageType =
   | "features"
   | "closeup"
   | "dimensions"
-  | "sizeChart"
   | "lifestyle"
   | "packaging"
   | "lifestyle2"
@@ -14,7 +13,6 @@ export const IMAGE_TYPE_LABELS: Record<ImageType, string> = {
   features: "痛点/卖点图",
   closeup: "功能/结构图",
   dimensions: "尺寸规格图",
-  sizeChart: "多规格尺寸表",
   lifestyle: "场景结果图",
   packaging: "差异化价值图",
   lifestyle2: "A+ 收束图",
@@ -26,18 +24,11 @@ export const IMAGE_TYPE_ORDER: ImageType[] = [
   "features",
   "closeup",
   "dimensions",
-  "sizeChart",
   "lifestyle",
   "packaging",
   "comparison",
   "lifestyle2",
 ];
-
-export interface SizeVariant {
-  size: string;           // e.g. "S", "M", "L", "XL"
-  dimensions: string;     // e.g. "18cm/7.08in"
-  suitableFor: string;    // e.g. "0.5-2kg/1.10-4.41lb"
-}
 
 export interface AnalysisResult {
   productName: string;
@@ -48,7 +39,6 @@ export interface AnalysisResult {
   targetAudience: string[];
   usageScenes: string[];
   estimatedDimensions: string;
-  sizeVariants?: SizeVariant[];
 }
 
 export interface ImagePlan {

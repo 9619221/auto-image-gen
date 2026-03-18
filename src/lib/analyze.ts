@@ -36,16 +36,11 @@ Return ONLY valid JSON with this structure:
   "targetAudience": ["中文人群1 (English Audience 1)", "中文人群2 (English Audience 2)", "中文人群3 (English Audience 3)"],
   "usageScenes": ["中文场景1 (English Scene 1)", "中文场景2 (English Scene 2)", "中文场景3 (English Scene 3)"],
   "estimatedDimensions": "尺寸 (e.g., 30 x 20 x 15 cm / 11.8 x 7.9 x 5.9 in)",
-  "sizeVariants": [
-    {"size": "S", "dimensions": "18cm/7.08in", "suitableFor": "0.5-2kg/1.10-4.41lb"},
-    {"size": "M", "dimensions": "21cm/8.26in", "suitableFor": "2-4kg/4.40-8.81lb"}
-  ]
 }
 
 Selling Points: Extract 3-5 core features, advantages, and unique selling points.
 Target Audience: Identify 3 different buyer personas.
-Usage Scenes: Describe 5 diverse, specific, vivid real-world usage scenarios (e.g., "忙碌的上班族下班回家后在玄关桌上整理钥匙和钱包 (A busy professional organizing keys and wallet on the entryway table after coming home)").
-Size Variants: If the product comes in multiple sizes (S/M/L/XL, or numbered sizes, or age-based sizes), extract the size chart data. Each variant needs: size label, key dimension, and suitability info (weight range, age range, etc.). If the product image contains a size chart or size table, extract ALL rows. If the product does NOT have multiple sizes, set sizeVariants to an empty array [].`;
+Usage Scenes: Describe 5 diverse, specific, vivid real-world usage scenarios (e.g., "忙碌的上班族下班回家后在玄关桌上整理钥匙和钱包 (A busy professional organizing keys and wallet on the entryway table after coming home)").`;
 }
 
 export async function analyzeProduct(

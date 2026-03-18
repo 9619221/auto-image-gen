@@ -17,7 +17,6 @@ export default function ImageTypeSelector({
     features: '痛点解决方案',
     closeup: '细节与品质感',
     dimensions: '尺寸说明',
-    sizeChart: '多规格尺寸表',
     lifestyle: '场景使用图',
     packaging: '差异化价值',
     comparison: '我们 vs 普通产品',
