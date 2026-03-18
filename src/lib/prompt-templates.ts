@@ -1,5 +1,6 @@
 import type { AnalysisResult, ImageType, ImagePlan, SalesRegion } from "./types";
 import { IMAGE_TYPE_LABELS, REGION_CONFIGS, regionToLanguage, LANGUAGE_ENGLISH_NAMES } from "./types";
+import { filterProhibitedWords } from "./prohibited-words";
 
 // ===== Text Utilities =====
 
@@ -72,6 +73,7 @@ function uniqueLabels(items: string[]): string[] {
 }
 
 function pickRandom<T>(arr: T[]): T {
+  if (!arr || arr.length === 0) return "" as unknown as T;
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
@@ -85,9 +87,35 @@ interface BenefitMatch {
 }
 
 const BENEFIT_MAP: BenefitMatch[] = [
-  // Cleaning / disposable
+  // === Jewelry / Gemstone / Accessories ===
+  { pattern: /natural.?stone|genuine.?stone|real.?stone|天然石/i,
+    painPoint: "Is It Real?", benefit: "Genuine Natural Stone", badge: "Natural" },
+  { pattern: /kyanite|蓝晶石/i,
+    painPoint: "Unique Crystal Energy", benefit: "Genuine Kyanite", badge: "Kyanite" },
+  { pattern: /agate|玛瑙/i,
+    painPoint: "Timeless Stone Beauty", benefit: "Genuine Agate", badge: "Agate" },
+  { pattern: /crystal|水晶|quartz|石英/i,
+    painPoint: "Crystal Clear Quality", benefit: "Genuine Crystal", badge: "Crystal" },
+  { pattern: /jade|翡翠|玉/i,
+    painPoint: "Authentic Jade", benefit: "Genuine Jade", badge: "Jade" },
+  { pattern: /chatoyancy|cat.?eye|猫眼/i,
+    painPoint: "Mesmerizing Glow", benefit: "Unique Cat-Eye Effect", badge: "Cat-Eye" },
+  { pattern: /hand.?made|handcraft|手工|artisan/i,
+    painPoint: "Crafted With Care", benefit: "Handcrafted Quality", badge: "Handmade" },
+  { pattern: /heal|chakra|energy|spiritual|meditation|瑜伽|冥想/i,
+    painPoint: "Find Your Balance", benefit: "Calming Energy", badge: "Calming" },
+  { pattern: /elastic|stretch|弹力|松紧/i,
+    painPoint: "One Size Fits All", benefit: "Stretchy Elastic Band", badge: "Adjustable" },
+  { pattern: /bead|珠|round/i,
+    painPoint: "Smooth Bead Finish", benefit: "Polished Round Beads", badge: "Polished" },
+  { pattern: /wrap|multi.?layer|多层|multi.?circle/i,
+    painPoint: "Layer Up Your Look", benefit: "Multi-Wrap Design", badge: "Multi-Wrap" },
+  { pattern: /unisex|男女|for.?men|for.?women/i,
+    painPoint: "For Him & Her", benefit: "Unisex Style", badge: "Unisex" },
+
+  // === Cleaning / disposable ===
   { pattern: /dispos|one.?time|throw.?away|no.?clean|no.?wash|skip.?clean/i,
-    painPoint: "Hate Doing Dishes?",  benefit: "Zero Cleanup", badge: "Use & Toss" },
+    painPoint: "Hate Doing Dishes?", benefit: "Zero Cleanup", badge: "Use & Toss" },
   { pattern: /easy.?clean|wipe|rinse|dishwasher|no.?scrub/i,
     painPoint: "No More Scrubbing", benefit: "Effortless Cleanup", badge: "Easy Clean" },
   // Heat / cooking
@@ -114,31 +142,28 @@ const BENEFIT_MAP: BenefitMatch[] = [
     painPoint: "One for Everything", benefit: "Endless Possibilities", badge: "Multi-Use" },
   // Food safety
   { pattern: /food.?safe|food.?grade|bpa.?free|non.?toxic|safe.?material/i,
-    painPoint: "100% Food Safe", benefit: "Safe for Your Family", badge: "Food-Safe" },
+    painPoint: "Food-Grade Safe", benefit: "Safe for Your Family", badge: "Food-Safe" },
   // Non-stick
   { pattern: /non.?stick|easy.?release|no.?stick|food.?release/i,
     painPoint: "Food Slides Right Off", benefit: "Non-Stick Surface", badge: "Non-Stick" },
   // Eco-friendly
   { pattern: /eco.?friend|recyclable|sustain|green|biodegradable|compostable/i,
-    painPoint: "Better for the Planet", benefit: "Eco-Friendly Choice", badge: "Eco-Friendly" },
-  // Stackable / storage
+    painPoint: "Better for the Planet", benefit: "Thoughtful Design", badge: "Earth-Wise" },
+  // Layered / stackable (jewelry first — matches before generic stackable)
+  { pattern: /layer|stack.?bracelet|multi.?strand|wrap.?around|叠戴|stackab.*(?:bracelet|ring|necklace|jewel|bead)/i,
+    painPoint: "Layer Up Your Look", benefit: "Layered Design", badge: "Layered" },
+  // Stackable / storage (non-jewelry)
   { pattern: /stackab|nest|compact.?stor|space.?sav|flat.?pack/i,
     painPoint: "Saves Cabinet Space", benefit: "Stackable Design", badge: "Stackable" },
   // Premium / quality
   { pattern: /premium|high.?quality|profession|commercial.?grade/i,
-    painPoint: "Restaurant Quality at Home", benefit: "Premium Grade", badge: "Pro Quality" },
+    painPoint: "Premium Quality Inside", benefit: "Premium Grade", badge: "Premium" },
   // With lid / cover
   { pattern: /with.?lid|lid.?includ|cover|seal.?tight/i,
     painPoint: "Keep Food Fresh", benefit: "Lid Included", badge: "With Lid" },
   // Aluminum specific
   { pattern: /aluminum|aluminium|foil/i,
     painPoint: "Cook, Serve & Toss", benefit: "Premium Aluminum", badge: "Aluminum" },
-  // Design / aesthetic
-  { pattern: /design|pattern|print|style|fashion|aesthetic|cute|decorat|beautiful/i,
-    painPoint: "Style Meets Function", benefit: "Eye-Catching Design", badge: "Stylish" },
-  // Easy / convenient
-  { pattern: /easy|convenient|simple|hassle.?free|effortless|quick/i,
-    painPoint: "Life Made Easier", benefit: "Effortless to Use", badge: "Easy Use" },
   // Waterproof / water resistant
   { pattern: /waterproof|water.?resist|moisture|splash.?proof/i,
     painPoint: "Rain or Shine Ready", benefit: "Waterproof Protection", badge: "Waterproof" },
@@ -147,10 +172,10 @@ const BENEFIT_MAP: BenefitMatch[] = [
     painPoint: "Stays in Place", benefit: "Anti-Slip Grip", badge: "Non-Slip" },
   // Gift / gifting
   { pattern: /gift|present|occasion|birthday|holiday|christmas/i,
-    painPoint: "Perfect Gift Idea", benefit: "Gift-Ready Packaging", badge: "Great Gift" },
+    painPoint: "Perfect Gift Idea", benefit: "Gift-Ready", badge: "Great Gift" },
   // Set / complete
   { pattern: /complete.?set|everything.?you.?need|all.?in.?one|full.?kit/i,
-    painPoint: "Everything You Need", benefit: "Complete Set Included", badge: "Full Set" },
+    painPoint: "Everything You Need", benefit: "Complete Set", badge: "Full Set" },
 ];
 
 /** Match selling point text to a benefit entry */
@@ -188,14 +213,25 @@ function inferProductStrategy(analysis: AnalysisResult) {
     matched.push(matMatch);
   }
 
-  // Fallback benefits if we didn't match enough
-  const fallbacks: BenefitMatch[] = [
-    { pattern: /^$/, painPoint: "Upgrade Your Routine", benefit: "Premium Quality", badge: "Top Rated" },
-    { pattern: /^$/, painPoint: "Smart Choice", benefit: "Great Value", badge: "Best Seller" },
-    { pattern: /^$/, painPoint: "Life Made Easier", benefit: "Effortless Design", badge: "5-Star Pick" },
-  ];
+  // Category-aware fallback benefits (NO fake claims like "Best Seller" or "5-Star Pick")
+  const catFallbacks = getCategoryFallbacks(category, productName, materials);
   while (matched.length < 3) {
-    matched.push(fallbacks[matched.length] || fallbacks[0]);
+    const fb = catFallbacks[matched.length] || catFallbacks[0];
+    // Avoid duplicating existing badges
+    if (!usedPatterns.has(fb.painPoint)) {
+      matched.push(fb);
+      usedPatterns.add(fb.painPoint);
+    } else {
+      // Try next fallback
+      const alt = catFallbacks.find(f => !usedPatterns.has(f.painPoint));
+      if (alt) {
+        matched.push(alt);
+        usedPatterns.add(alt.painPoint);
+      } else {
+        matched.push(fb); // last resort
+        break;
+      }
+    }
   }
 
   const scene1 = compactLabel(usageScenes[0] || "everyday use", 5, 32).toLowerCase();
@@ -213,7 +249,7 @@ function inferProductStrategy(analysis: AnalysisResult) {
   const functionBadge2 = matched[2].badge;
 
   // Lifestyle: result headline from scene context
-  const resultHeadline = deriveResultHeadline(scene1, audience1, category);
+  const resultHeadline = deriveResultHeadline(scene1, audience1, category, materials);
 
   // Value: why choose this product
   const valueHeadline = deriveValueHeadline(category, productName, materials);
@@ -232,6 +268,9 @@ function inferProductStrategy(analysis: AnalysisResult) {
     matched[2].badge,
   ]).slice(0, 3);
 
+  // 过滤所有文案中的违禁词
+  const safe = (text: string) => filterProhibitedWords(text);
+
   return {
     productName,
     category,
@@ -239,28 +278,89 @@ function inferProductStrategy(analysis: AnalysisResult) {
     usageScenes,
     targetAudience,
     materials,
-    painPointHeadline,
-    painPointBadge1,
-    painPointBadge2,
-    functionHeadline,
-    functionBadge1,
-    functionBadge2,
-    resultHeadline,
-    valueHeadline,
-    aPlusLabels,
-    comparisonBadges,
+    painPointHeadline: safe(painPointHeadline),
+    painPointBadge1: safe(painPointBadge1),
+    painPointBadge2: safe(painPointBadge2),
+    functionHeadline: safe(functionHeadline),
+    functionBadge1: safe(functionBadge1),
+    functionBadge2: safe(functionBadge2),
+    resultHeadline: safe(resultHeadline),
+    valueHeadline: safe(valueHeadline),
+    aPlusLabels: aPlusLabels.map(safe).filter(l => l.length > 0),
+    comparisonBadges: comparisonBadges.map(safe).filter(b => b.length > 0),
     scene1,
     scene2,
     audience1,
   };
 }
 
-function deriveResultHeadline(scene: string, audience: string, category: string): string {
-  // Use CATEGORY (product type) as primary signal, not scene context
-  const cat = category.toLowerCase();
+/** Category-aware fallbacks — no fake claims */
+function getCategoryFallbacks(category: string, productName: string, materials: string): BenefitMatch[] {
+  const ctx = `${category} ${productName} ${materials}`.toLowerCase();
 
-  // Jewelry / accessories — emphasize style & beauty
-  if (/ring|jewel|necklace|bracelet|earring|pendant|charm|accessori|饰品|戒指|项链|手链|耳环/.test(cat)) return "Shine Every Day";
+  // Jewelry / gemstone / accessories
+  if (/ring|jewel|necklace|bracelet|earring|pendant|charm|bead|gem|stone|crystal|agate|kyanite|jade|quartz|饰品|戒指|项链|手链|耳环|珠|水晶|玛瑙/.test(ctx)) {
+    return [
+      { pattern: /^$/, painPoint: "Genuine Natural Stone", benefit: "Real Natural Material", badge: "Natural" },
+      { pattern: /^$/, painPoint: "Wear It Your Way", benefit: "Versatile Styling", badge: "Versatile" },
+      { pattern: /^$/, painPoint: "Thoughtful Gift", benefit: "Gift-Ready", badge: "Gift Idea" },
+      { pattern: /^$/, painPoint: "Smooth Polished Finish", benefit: "Fine Craftsmanship", badge: "Polished" },
+    ];
+  }
+
+  // Pet products
+  if (/pet|dog|cat|puppy|kitten|宠物|猫|狗/.test(ctx)) {
+    return [
+      { pattern: /^$/, painPoint: "Safe for Your Pet", benefit: "Pet-Safe Material", badge: "Pet-Safe" },
+      { pattern: /^$/, painPoint: "Easy to Clean", benefit: "Quick Wash", badge: "Washable" },
+      { pattern: /^$/, painPoint: "Durable Build", benefit: "Long-Lasting", badge: "Durable" },
+    ];
+  }
+
+  // Kitchen / cooking
+  if (/kitchen|cook|bak|food|pan|pot|tray|plate|bowl|cup|厨|烹|盘|碗/.test(ctx)) {
+    return [
+      { pattern: /^$/, painPoint: "Safe for Food", benefit: "Food-Grade Material", badge: "Food-Safe" },
+      { pattern: /^$/, painPoint: "Easy to Clean", benefit: "Quick Cleanup", badge: "Easy Clean" },
+      { pattern: /^$/, painPoint: "Built to Last", benefit: "Durable Construction", badge: "Durable" },
+    ];
+  }
+
+  // Generic fallbacks — factual, no fake claims
+  return [
+    { pattern: /^$/, painPoint: "Quality You Can Feel", benefit: "Premium Material", badge: "Premium" },
+    { pattern: /^$/, painPoint: "Built to Last", benefit: "Durable Design", badge: "Durable" },
+    { pattern: /^$/, painPoint: "Thoughtful Gift", benefit: "Gift-Ready", badge: "Gift Idea" },
+  ];
+}
+
+function deriveResultHeadline(scene: string, audience: string, category: string, materials?: string): string {
+  // Use CATEGORY + MATERIAL as primary signal
+  const cat = category.toLowerCase();
+  const mat = (materials || "").toLowerCase();
+  const ctx2 = `${cat} ${mat}`;
+
+  // Jewelry — stone-specific headlines
+  if (/kyanite|蓝晶石/.test(ctx2)) return "Calm Blue Energy";
+  if (/agate|玛瑙/.test(ctx2) && /red|红/.test(ctx2)) return "Bold Red Elegance";
+  if (/agate|玛瑙/.test(ctx2)) return "Natural Stone Beauty";
+  if (/amethyst|紫水晶/.test(ctx2)) return "Purple Serenity";
+  if (/rose.?quartz|粉晶|芙蓉石/.test(ctx2)) return "Soft Pink Glow";
+  if (/tiger.?eye|虎眼/.test(ctx2)) return "Bold Earth Tones";
+  if (/jade|翡翠|玉/.test(ctx2)) return "Timeless Jade";
+  if (/obsidian|黑曜石/.test(ctx2)) return "Sleek Dark Edge";
+  if (/lapis|青金石/.test(ctx2)) return "Deep Blue Charm";
+  if (/turquoise|绿松石/.test(ctx2)) return "Desert Sky Blue";
+  if (/moonstone|月光石/.test(ctx2)) return "Moonlit Glow";
+  if (/aquamarine|海蓝宝/.test(ctx2)) return "Ocean Blue Clarity";
+  if (/crystal|水晶|quartz|石英/.test(ctx2)) return "Crystal Clear Style";
+  if (/pearl|珍珠/.test(ctx2)) return "Classic Pearl Elegance";
+
+  // Generic jewelry fallback — randomize
+  if (/ring|jewel|necklace|bracelet|earring|pendant|charm|accessori|饰品|戒指|项链|手链|耳环/.test(cat)) {
+    const jewelryHeadlines = ["Wear Your Story", "Everyday Elegance", "Your Signature Look", "Simply Beautiful"];
+    return jewelryHeadlines[Math.floor(Math.random() * jewelryHeadlines.length)];
+  }
   if (/watch|手表/.test(cat)) return "Time in Style";
   if (/bag|purse|wallet|clutch|tote|包|钱包/.test(cat)) return "Carry in Style";
   if (/hat|cap|scarf|glove|帽|围巾|手套/.test(cat)) return "Style Essential";
@@ -320,13 +420,26 @@ function getCategorySceneGuide(category: string, productName: string): string {
   const ctx = `${category} ${productName}`.toLowerCase();
 
   if (/ring|jewel|necklace|bracelet|earring|pendant|charm|饰品|戒指|项链|手链|耳环/.test(ctx)) {
+    // 随机选一个场景方向，避免总是同一个
+    const jewelryScenes = [
+      "getting ready for a date night — mirror, vanity, warm light",
+      "relaxing at a sunlit café with a latte — outdoor terrace, golden hour",
+      "walking through a garden or park at sunset — natural greenery, warm bokeh",
+      "having brunch with friends — elegant table setting, bright natural light",
+      "reading a book by a window — cozy armchair, soft afternoon light",
+      "at an art gallery or museum — minimal modern interior, soft spotlights",
+      "enjoying afternoon tea — elegant teaware, floral arrangement, soft tones",
+      "strolling through a European-style street — cobblestone, warm architecture",
+    ];
+    const chosenScene = jewelryScenes[Math.floor(Math.random() * jewelryScenes.length)];
     return `
 🎬 SCENE DIRECTION (Jewelry/Accessories):
-- BEST scenes: getting ready for a date, café moment, garden party, sunset walk, brunch with friends
+- USE THIS SPECIFIC SCENE: ${chosenScene}
 - Show the product being WORN in a stylish, aspirational context
 - Background: soft bokeh, warm tones, elegant but not corporate
-- Do NOT use: office/work scenes, gym, kitchen, industrial settings
-- The model should look happy, confident, and stylish — NOT working at a desk
+- Do NOT use: office/work scenes, gym, kitchen, industrial settings, yoga/meditation
+- Do NOT use: white fur/fluffy fabric backgrounds
+- The model should look happy, confident, and stylish — NOT working at a desk or meditating
 `;
   }
 
@@ -345,9 +458,17 @@ function getCategorySceneGuide(category: string, productName: string): string {
 
 function deriveValueHeadline(category: string, productName: string, materials: string): string {
   const ctx = `${category} ${productName} ${materials}`.toLowerCase();
+
+  // Jewelry / gemstone — material authenticity
+  if (/kyanite|蓝晶石/.test(ctx)) return "Genuine Kyanite";
+  if (/agate|玛瑙/.test(ctx)) return "Genuine Natural Agate";
+  if (/crystal|水晶|quartz/.test(ctx)) return "Real Crystal Stone";
+  if (/jade|翡翠|玉/.test(ctx)) return "Authentic Jade";
+  if (/ring|jewel|necklace|bracelet|earring|pendant|charm|bead|gem|stone|饰品|戒指|项链|手链|耳环|珠/.test(ctx)) return "Natural Stone Quality";
+
   if (/aluminum|steel|metal|iron/.test(ctx)) return "Built to Last";
   if (/food.?grade|bpa.?free|safe|non.?toxic/.test(ctx)) return "Food-Safe Quality";
-  if (/bamboo|wood|natural|organic|eco/.test(ctx)) return "Eco-Friendly Choice";
+  if (/bamboo|wood|natural|organic|eco/.test(ctx)) return "Nature-Inspired";
   if (/premium|luxury|high.?end/.test(ctx)) return "Premium Choice";
   if (/pack|set|count|piece/.test(ctx)) return "Best Value Pack";
   if (/silicone|rubber|flexible/.test(ctx)) return "Flexible & Durable";
@@ -374,9 +495,17 @@ const mainLighting = [
 ];
 
 const closeupStyles = [
-  "Use a circular zoom inset to show one meaningful detail",
+  "Use a cropped inset panel to show one meaningful detail up close",
   "Split the image: full product on the left, macro detail on the right",
-  "Use a refined magnifier effect to highlight one premium component",
+  "Use shallow depth-of-field to draw the eye to one premium component",
+];
+
+const closeupBackgrounds = [
+  "clean white marble surface with soft natural side lighting",
+  "matte dark slate surface for high-contrast detail visibility",
+  "light linen fabric with subtle texture — NOT white fur or fluffy fabric",
+  "neutral concrete or stone surface with minimal texture",
+  "warm wood grain surface with soft overhead lighting",
 ];
 
 const lifestyleMoods = [
@@ -453,6 +582,19 @@ export function generatePlans(
 - Each image communicates ONE core buying reason
 `;
 
+  const prohibitedWordsRule = `
+🚨 PROHIBITED WORDS — AMAZON COMPLIANCE:
+Text on images must NOT contain any of these:
+- Ranking claims: "Best Seller", "#1", "Top Rated", "Most Popular", "Top Pick", "Top Choice", "Award-Winning"
+- Rating claims: "5-Star", "Star Pick", "Highly Rated", "Customer Favorite"
+- Medical/health claims: "Healing", "Therapeutic", "Cures", "FDA Approved", "Clinically Proven", "Chakra", "Detox"
+- Absolute claims: "100%", "Perfect", "Guaranteed", "Flawless", "Unbreakable", "World's Best"
+- Unverified eco claims: "Eco-Friendly", "Organic", "Sustainable", "Biodegradable", "Carbon Neutral"
+- Price/promo language: "Free Shipping", "Discount", "Sale", "Cheapest", "Deal", "Buy Now"
+- Urgency language: "Limited Time", "Hurry", "Act Now", "Order Now"
+If the provided headline or badge text contains any prohibited word, SKIP that text entirely — do NOT display it.
+`;
+
   const strictSingleProductRule = `
 🔒 SINGLE PRODUCT RULE:
 - Show only the real product from the reference
@@ -461,16 +603,61 @@ export function generatePlans(
 - Do NOT add fictional props (magnifying glasses, rulers, pointers, etc.)
 `;
 
+  const noCopyReferenceTextRule = `
+🚫 DO NOT COPY REFERENCE TEXT:
+- Do NOT reproduce any text visible in the reference photos (e.g. text on cards, tags, packaging)
+- Only use the EXACT text specified in the TEXT RULES section below
+- If reference photos show text like "have a nice day" or brand slogans, IGNORE them completely
+`;
+
+  const strictBadgeRule = `
+🚫 STRICT BADGE / LABEL RULE:
+- Use ONLY the exact text specified in TEXT RULES below — no more, no less
+- Do NOT invent extra badges, seals, ribbons, or stamps (e.g. "Best Seller", "5-Star Pick", "Premium Quality")
+- Do NOT add fake certification badges, rating stars, or award icons
+- Do NOT duplicate any badge — each badge text appears ONCE only
+- Maximum badges per image: 2 (unless TEXT RULES specify fewer)
+- If TEXT RULES say 2 badges, show exactly 2. If it says 0, show 0.
+`;
+
   const humanAnatomyRule = `
 🚨 HUMAN ANATOMY — CRITICAL:
 - If people appear in the image, their hands and fingers MUST have correct anatomy
-- Hands must have exactly 5 fingers each with natural proportions and joints
+- Hands must have exactly 5 fingers each (no more, no less) with natural proportions and joints
+- Each finger must have exactly 3 visible segments (phalanges) with natural bending
+- Thumbs must be clearly distinct from other fingers — shorter, thicker, and opposable
 - Do NOT show close-up hands holding/wearing the product if it risks deformed fingers
 - PREFER: show people from a wider angle (waist-up, full body) to minimize hand detail issues
 - PREFER: show the product in use WITHOUT focusing on hand/finger close-ups
 - If the product is worn on hands (rings, bracelets, gloves), show from a distance where minor hand imperfections are less visible
 - All human body proportions must look natural — no extra limbs, merged fingers, or distorted joints
+- Fingernails must be natural shape and size — no missing or duplicated nails
 `;
+
+  // 产品颜色还原规则 — 基于分析结果中的颜色信息
+  const colorAccuracyRule = (colors: string) => colors ? `
+🎨 COLOR ACCURACY — CRITICAL:
+- The product color MUST match the reference photos EXACTLY
+- Product colors from analysis: ${colors}
+- Do NOT shift, brighten, desaturate, or alter the product color
+- If the reference shows deep blue, generate deep blue — not light blue or teal
+- If the reference shows red/crimson, generate red/crimson — not orange or pink
+- Color accuracy is MORE important than artistic style
+- Background and lighting should NOT wash out or shift the product color
+` : "";
+
+  // 模特多样性规则
+  const modelDiversityRule = `
+👥 MODEL DIVERSITY:
+- Use models of VARIED ethnicities and skin tones (East Asian, South Asian, Black, Hispanic, Caucasian, Middle Eastern)
+- Do NOT default to only Caucasian/white models
+- Pick a model ethnicity that feels natural for the product and target market
+- All models should look natural, confident, and relatable
+`;
+
+  // 动态规则实例化
+  const colorRule = colorAccuracyRule(analysis.colors || "");
+  const diversityRule = modelDiversityRule;
 
   const textSafeZoneRule = `
 🚨 TEXT SAFE ZONE — CRITICAL:
@@ -539,6 +726,10 @@ ${cleanCornerRule}
 ${productIdentityRule}
 ${structureLockRule}
 ${textSafeZoneRule}
+${noCopyReferenceTextRule}
+${strictBadgeRule}
+${prohibitedWordsRule}
+${colorRule}
 🔒 Show ONE product only. Match the reference product exactly.
 
 CONCEPT:
@@ -577,6 +768,10 @@ ${cleanCornerRule}
 ${productIdentityRule}
 ${structureLockRule}
 ${textSafeZoneRule}
+${noCopyReferenceTextRule}
+${strictBadgeRule}
+${prohibitedWordsRule}
+${colorRule}
 🔒 Show ONLY ONE product. Keep the product identical to the reference.
 
 CONCEPT:
@@ -590,6 +785,10 @@ CONCEPT:
 - Do NOT add visual gimmicks — let the product photography speak for itself
 - Only the product and its REAL components/accessories should appear
 - Use camera zoom/crop to show detail, NOT illustrated props
+
+BACKGROUND:
+- ${pickRandom(closeupBackgrounds)}
+- Do NOT use white fur, fluffy fabric, or pet-hair-like surfaces
 
 LAYOUT:
 - ${pickRandom(closeupStyles)}
@@ -657,7 +856,12 @@ ${cleanCornerRule}
 ${productIdentityRule}
 ${structureLockRule}
 ${textSafeZoneRule}
+${noCopyReferenceTextRule}
+${strictBadgeRule}
+${prohibitedWordsRule}
 🔒 Show the exact product from the reference in realistic use. Adults only.
+${colorRule}
+${diversityRule}
 ${humanAnatomyRule}
 ${visibilityRule}
 ${sceneGuide}
@@ -699,6 +903,10 @@ ${cleanCornerRule}
 ${productIdentityRule}
 ${structureLockRule}
 ${textSafeZoneRule}
+${noCopyReferenceTextRule}
+${strictBadgeRule}
+${prohibitedWordsRule}
+${colorRule}
 🔒 Show only the actual product from the reference.
 
 GOAL:
@@ -740,7 +948,12 @@ ${structureLockRule}
 ${strictSingleProductRule}
 ${brandSystemRule}
 ${textSafeZoneRule}
+${noCopyReferenceTextRule}
+${strictBadgeRule}
+${prohibitedWordsRule}
 🔒 Keep the product identical to the reference in every panel. Adults only.
+${colorRule}
+${diversityRule}
 ${humanAnatomyRule}
 
 CONCEPT:
@@ -791,6 +1004,9 @@ STYLE:
 ${cleanCornerRule}
 ${productIdentityRule}
 ${textSafeZoneRule}
+${noCopyReferenceTextRule}
+${strictBadgeRule}
+${prohibitedWordsRule}
 🔒 Left side: the REAL product from the reference. Right side: a GENERIC plain version (no real brand).
 
 CONCEPT:

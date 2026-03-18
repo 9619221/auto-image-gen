@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { analyzeProduct } from "@/lib/analyze";
 import { filesToDataUrls } from "@/lib/server-image";
 import { validateUploadedFiles } from "@/lib/validate-upload";
-import { authenticateRequest } from "@/lib/api-auth";
+import { authenticateRequest, checkRateLimit } from "@/lib/api-auth";
 
 export async function POST(req: NextRequest) {
   const authError = authenticateRequest(req);
   if (authError) return authError;
+  const rateLimitError = checkRateLimit(req, "analyze");
+  if (rateLimitError) return rateLimitError;
 
   try {
     const formData = await req.formData();

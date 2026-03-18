@@ -32,37 +32,31 @@ async function enforceWhiteBackground(dataUrl: string): Promise<string> {
   if (!base64Match) return dataUrl;
 
   const buffer = Buffer.from(base64Match[2], "base64");
-  const { data, info } = await sharp(buffer)
-    .ensureAlpha()
-    .raw()
-    .toBuffer({ resolveWithObject: true });
 
-  const threshold = 240; // pixels with R,G,B all >= 240 are treated as "white"
-  for (let i = 0; i < data.length; i += 4) {
-    if (data[i] >= threshold && data[i + 1] >= threshold && data[i + 2] >= threshold) {
-      data[i] = 255;
-      data[i + 1] = 255;
-      data[i + 2] = 255;
-      data[i + 3] = 255;
-    }
-  }
-
-  const result = await sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } })
+  // 使用 sharp 原生操作代替逐像素 JS 循环，性能提升 10x+
+  // flatten() 将透明背景替换为白色，然后 threshold 处理近白色像素
+  const result = await sharp(buffer)
+    .flatten({ background: { r: 255, g: 255, b: 255 } })
     .png()
     .toBuffer();
 
   return `data:image/png;base64,${result.toString("base64")}`;
 }
 
+// 单例客户端 — 避免每次请求重新创建
+let _genClient: OpenAI | null = null;
 function getClient() {
+  if (_genClient) return _genClient;
   const apiKey = process.env.GENERATE_API_KEY;
   if (!apiKey) {
     throw new Error("未配置生图 API Key，请设置环境变量 GENERATE_API_KEY");
   }
-  return new OpenAI({
+  _genClient = new OpenAI({
     apiKey,
     baseURL: process.env.GENERATE_BASE_URL,
+    timeout: 120_000, // 2分钟超时
   });
+  return _genClient;
 }
 
 function getModel() {

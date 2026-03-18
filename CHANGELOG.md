@@ -2,6 +2,64 @@
 
 ---
 
+## 2026-03-18 — 安全修复 + 违禁词过滤 + 图片质量优化（大版本更新）
+
+### 安全修复（严重）
+- **路径遍历漏洞修复** — `history.ts` 添加 `isValidId()` 校验，防止通过 `../../` 读取服务器文件
+- **速率限制** — 新增 `checkRateLimit()` 全局限流器，所有 API 端点已接入（generate 5次/分钟，analyze 10次/分钟等）
+- **LLM 提示词注入防护** — 新增 `sanitize.ts`，用户输入在拼入 prompt 前自动清洗
+- **SSE 断开连接处理** — 客户端断开后停止后台图片生成，不再浪费 API 额度
+- **API 超时** — 所有 OpenAI 客户端添加超时（生图 2 分钟，分析 1 分钟，评分/标题 30 秒）
+
+### 思路
+之前所有 API 端点完全裸奔，任何人可以无限调用刷爆 AI 额度。history 接口存在路径遍历风险可读取服务器任意文件。SSE 连接断开后后台任务继续运行浪费资源。
+
+### 亚马逊违禁词过滤系统
+- **新增 `prohibited-words.ts`** — 80+ 违禁词库，覆盖虚假排名、医疗声明、绝对化用语、促销用语等
+- **三层防护** — 源头过滤（BENEFIT_MAP）+ 代码过滤器 + AI prompt 指令
+- **图片文案 + 标题双重过滤** — 所有生成的文案自动检测并替换违禁词
+- 去掉 "Best Seller"、"5-Star Pick"、"Eco-Friendly"、"Healing"、"100%" 等虚假/未认证声明
+
+### 思路
+亚马逊对 listing 图片上的文字有严格限制，虚假声明（Best Seller）和未认证环保声明（Eco-Friendly）会导致下架。通过三层过滤确保文案合规。
+
+### 图片生成质量优化
+- **珠宝/宝石专属文案** — 14 种宝石专属标语（蓝晶石→"Calm Blue Energy"，红玛瑙→"Bold Red Elegance"，海蓝宝→"Ocean Blue Clarity" 等）
+- **产品颜色还原** — 新增 `colorAccuracyRule`，把分析出的颜色信息注入 prompt
+- **模特多样性** — 新增 `modelDiversityRule`，不再默认白人模特
+- **Lifestyle 场景多样化** — 珠宝类 8 种场景随机选（约会、咖啡馆、花园等），禁止瑜伽/办公
+- **close-up 背景多样化** — 5 种背景随机选（白大理石、深色石板、亚麻布等），禁止白色毛绒布
+- **手部细节强化** — 明确 5 根手指、3 段指节、拇指独立
+- **去掉放大镜道具** — `closeupStyles` 中移除 "magnifier effect"
+- **Stackable → Layered** — 珠宝类使用 "Layered Design" 而非 "Stackable Design"
+
+### 思路
+之前所有珠宝都用 "Shine Every Day"，所有 close-up 都是白色毛绒布背景，模特全是白人，场景固定瑜伽/冥想。通过按品类/材质细分文案和场景，提升生成图片的针对性和多样性。
+
+### 性能优化
+- **OpenAI 客户端单例化** — 4 处 `getClient()` 改为单例模式，避免每次请求重新创建
+- **白底处理优化** — `enforceWhiteBackground` 从逐像素 JS 循环改为 sharp `flatten()` 原生操作
+- **PM2 内存限制** — 从 1G 提升到 2G
+- **请求体大小限制** — `next.config.ts` 添加 `bodySizeLimit: "10mb"`
+- **移除未使用 API Key** — 删除 `.env.local` 中的 `FAL_KEY` 和 `GOOGLE_API_KEY`
+
+### 修改文件
+- `src/lib/prohibited-words.ts` — 新增：违禁词库
+- `src/lib/sanitize.ts` — 新增：输入净化工具
+- `src/lib/api-auth.ts` — 新增速率限制器
+- `src/lib/prompt-templates.ts` — 大幅更新：违禁词规则、珠宝文案、场景多样化、颜色还原
+- `src/lib/image-gen.ts` — 单例客户端、sharp 白底优化、超时设置
+- `src/lib/history.ts` — 路径遍历修复
+- `src/lib/analyze.ts` — 单例客户端、超时
+- `src/app/api/generate/route.ts` — SSE 断开处理、速率限制、try-catch
+- `src/app/api/score/route.ts` — 单例客户端、速率限制、超时
+- `src/app/api/title/route.ts` — 输入净化、速率限制、单例客户端
+- `src/app/api/analyze/route.ts` — 速率限制
+- `ecosystem.config.js` — 内存限制 2G
+- `next.config.ts` — 请求体限制
+
+---
+
 ## 2026-03-18 — 全面代码审查 & 7 项 Bug 修复
 
 **改了什么**:

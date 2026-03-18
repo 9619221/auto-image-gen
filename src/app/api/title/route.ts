@@ -1,20 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateRequest } from "@/lib/api-auth";
+import { authenticateRequest, checkRateLimit } from "@/lib/api-auth";
 import OpenAI from "openai";
 import type { AnalysisResult } from "@/lib/types";
+import { filterProhibitedWords } from "@/lib/prohibited-words";
+import { sanitizeForPrompt, sanitizeArray } from "@/lib/sanitize";
 
+let _titleClient: OpenAI | null = null;
 function getClient() {
+  if (_titleClient) return _titleClient;
   const apiKey = process.env.ANALYZE_API_KEY;
   if (!apiKey) throw new Error("未配置分析 API Key");
-  return new OpenAI({
+  _titleClient = new OpenAI({
     apiKey,
     baseURL: process.env.ANALYZE_BASE_URL,
+    timeout: 30_000,
   });
+  return _titleClient;
 }
 
 export async function POST(req: NextRequest) {
   const authError = authenticateRequest(req);
   if (authError) return authError;
+  const rateLimitError = checkRateLimit(req, "title");
+  if (rateLimitError) return rateLimitError;
 
   try {
     const { analysis } = (await req.json()) as {
@@ -25,16 +33,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "缺少商品信息" }, { status: 400 });
     }
 
+    // 净化用户输入防止提示词注入
+    const safeName = sanitizeForPrompt(analysis.productName, 100);
+    const safeCategory = sanitizeForPrompt(analysis.category || "", 100);
+    const safePoints = sanitizeArray(analysis.sellingPoints || []).join("；");
+    const safeMaterials = sanitizeForPrompt(analysis.materials || "", 100);
+    const safeColors = sanitizeForPrompt(analysis.colors || "", 100);
+    const safeDimensions = sanitizeForPrompt(analysis.estimatedDimensions || "", 100);
+
     const prompt = `你是一位专业的亚马逊商品标题撰写专家，擅长撰写高转化率的中文商品标题。
 
 根据以下商品信息生成优化的亚马逊中文商品标题：
 
-- 商品名称: ${analysis.productName}
-- 类目: ${analysis.category}
-- 核心卖点: ${analysis.sellingPoints.join("；")}
-- 材质: ${analysis.materials}
-- 颜色: ${analysis.colors}
-- 尺寸: ${analysis.estimatedDimensions}
+- 商品名称: ${safeName}
+- 类目: ${safeCategory}
+- 核心卖点: ${safePoints}
+- 材质: ${safeMaterials}
+- 颜色: ${safeColors}
+- 尺寸: ${safeDimensions}
 
 亚马逊中文标题规则：
 1. 长度控制在80-120个中文字符
@@ -74,6 +90,15 @@ export async function POST(req: NextRequest) {
     }
 
     const result = JSON.parse(jsonMatch[0]);
+
+    // 过滤标题中的违禁词
+    if (result.titles && Array.isArray(result.titles)) {
+      result.titles = result.titles.map((t: { label: string; title: string }) => ({
+        ...t,
+        title: filterProhibitedWords(t.title),
+      }));
+    }
+
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(

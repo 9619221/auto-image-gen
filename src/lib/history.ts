@@ -33,6 +33,11 @@ function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/** Validate history ID to prevent path traversal */
+function isValidId(id: string): boolean {
+  return /^[\d]+-[a-z0-9]+$/.test(id) && !id.includes("..") && !id.includes("/") && !id.includes("\\");
+}
+
 export async function saveHistory(entry: Omit<HistoryEntry, "id" | "timestamp">): Promise<string> {
   await ensureDir(HISTORY_DIR);
 
@@ -77,6 +82,9 @@ export async function listHistory(): Promise<HistoryMeta[]> {
   const dirs = await fs.readdir(HISTORY_DIR);
 
   for (const dir of dirs) {
+    // Skip dirs that don't match safe ID pattern
+    if (!isValidId(dir)) continue;
+
     const metaPath = path.join(HISTORY_DIR, dir, "meta.json");
     try {
       const raw = await fs.readFile(metaPath, "utf-8");
@@ -97,12 +105,8 @@ export async function listHistory(): Promise<HistoryMeta[]> {
   return entries;
 }
 
-function isSafeId(id: string): boolean {
-  return /^[\w-]+$/.test(id);
-}
-
 export async function getHistoryEntry(id: string): Promise<HistoryEntry | null> {
-  if (!isSafeId(id)) return null;
+  if (!isValidId(id)) return null;
   const entryDir = path.join(HISTORY_DIR, id);
   const metaPath = path.join(entryDir, "meta.json");
 

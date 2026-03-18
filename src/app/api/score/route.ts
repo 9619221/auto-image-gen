@@ -1,17 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateRequest } from "@/lib/api-auth";
+import { authenticateRequest, checkRateLimit } from "@/lib/api-auth";
 import OpenAI from "openai";
 import type { ImageScore } from "@/lib/types";
 
+let _scoreClient: OpenAI | null = null;
 function getClient() {
+  if (_scoreClient) return _scoreClient;
   const apiKey = process.env.ANALYZE_API_KEY;
   if (!apiKey) {
     throw new Error("未配置分析 API Key");
   }
-  return new OpenAI({
+  _scoreClient = new OpenAI({
     apiKey,
     baseURL: process.env.ANALYZE_BASE_URL,
+    timeout: 30_000,
   });
+  return _scoreClient;
 }
 
 const IMAGE_TYPE_CRITERIA: Record<string, string> = {
@@ -28,6 +32,8 @@ const IMAGE_TYPE_CRITERIA: Record<string, string> = {
 export async function POST(req: NextRequest) {
   const authError = authenticateRequest(req);
   if (authError) return authError;
+  const rateLimitError = checkRateLimit(req, "score");
+  if (rateLimitError) return rateLimitError;
 
   try {
     const { imageUrl, imageType } = await req.json();

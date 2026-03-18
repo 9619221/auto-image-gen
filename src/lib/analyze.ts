@@ -1,15 +1,20 @@
 import OpenAI from "openai";
 import type { AnalysisResult } from "./types";
 
+// 单例客户端
+let _analyzeClient: OpenAI | null = null;
 function getClient() {
+  if (_analyzeClient) return _analyzeClient;
   const apiKey = process.env.ANALYZE_API_KEY;
   if (!apiKey) {
     throw new Error("未配置分析 API Key，请设置环境变量 ANALYZE_API_KEY");
   }
-  return new OpenAI({
+  _analyzeClient = new OpenAI({
     apiKey,
     baseURL: process.env.ANALYZE_BASE_URL,
+    timeout: 60_000, // 1分钟超时
   });
+  return _analyzeClient;
 }
 
 function buildAnalysisPrompt(imageCount: number, productMode: string): string {
