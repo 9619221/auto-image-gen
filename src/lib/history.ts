@@ -41,14 +41,16 @@ export async function saveHistory(entry: Omit<HistoryEntry, "id" | "timestamp">)
   await ensureDir(entryDir);
 
   // Save each image as a separate file
-  const imageRefs: Array<{ imageType: string; filename: string }> = [];
+  const imageRefs: Array<{ imageType: string; filename: string; mime: string }> = [];
   for (const img of entry.images) {
-    const filename = `${img.imageType}.png`;
-    const base64Match = img.imageUrl.match(/^data:image\/[^;]+;base64,(.+)$/);
+    const base64Match = img.imageUrl.match(/^data:image\/([^;]+);base64,(.+)$/);
+    const ext = base64Match?.[1] === "jpeg" ? "jpg" : (base64Match?.[1] || "png");
+    const mime = base64Match ? `image/${base64Match[1]}` : "image/png";
+    const filename = `${img.imageType}.${ext}`;
     if (base64Match) {
-      await fs.writeFile(path.join(entryDir, filename), Buffer.from(base64Match[1], "base64"));
+      await fs.writeFile(path.join(entryDir, filename), Buffer.from(base64Match[2], "base64"));
     }
-    imageRefs.push({ imageType: img.imageType, filename });
+    imageRefs.push({ imageType: img.imageType, filename, mime });
   }
 
   // Save metadata
@@ -80,17 +82,6 @@ export async function listHistory(): Promise<HistoryMeta[]> {
       const raw = await fs.readFile(metaPath, "utf-8");
       const meta = JSON.parse(raw);
 
-      // Generate small thumbnail from first image
-      let thumbnail: string | undefined;
-      if (meta.images && meta.images.length > 0) {
-        const firstImgPath = path.join(HISTORY_DIR, dir, meta.images[0].filename);
-        try {
-          const imgBuf = await fs.readFile(firstImgPath);
-          // Use first 100 bytes as a simple check, return small thumbnail
-          thumbnail = `data:image/png;base64,${imgBuf.toString("base64").slice(0, 200)}...`;
-        } catch { /* ignore */ }
-      }
-
       entries.push({
         id: meta.id,
         timestamp: meta.timestamp,
@@ -106,7 +97,12 @@ export async function listHistory(): Promise<HistoryMeta[]> {
   return entries;
 }
 
+function isSafeId(id: string): boolean {
+  return /^[\w-]+$/.test(id);
+}
+
 export async function getHistoryEntry(id: string): Promise<HistoryEntry | null> {
+  if (!isSafeId(id)) return null;
   const entryDir = path.join(HISTORY_DIR, id);
   const metaPath = path.join(entryDir, "meta.json");
 
@@ -119,9 +115,10 @@ export async function getHistoryEntry(id: string): Promise<HistoryEntry | null> 
       const imgPath = path.join(entryDir, ref.filename);
       try {
         const imgBuf = await fs.readFile(imgPath);
+        const mime = ref.mime || (ref.filename.endsWith(".jpg") ? "image/jpeg" : "image/png");
         images.push({
           imageType: ref.imageType,
-          imageUrl: `data:image/png;base64,${imgBuf.toString("base64")}`,
+          imageUrl: `data:${mime};base64,${imgBuf.toString("base64")}`,
         });
       } catch { /* skip missing images */ }
     }

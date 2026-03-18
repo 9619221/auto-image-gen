@@ -2,6 +2,50 @@
 
 ---
 
+## 2026-03-18 — 全面代码审查 & 7 项 Bug 修复
+
+**改了什么**:
+
+### BUG 1 (严重): 历史记录缩略图死代码 — `history.ts`
+- **问题**: `listHistory()` 中生成缩略图的逻辑将 base64 截断到 200 字符并拼接 `...`，生成的是无效 data URL。且 `thumbnail` 变量生成后从未被使用，是死代码。
+- **修复**: 删除整段无效的缩略图生成代码（约 10 行）。
+- **思路**: 死代码增加维护负担且逻辑本身有错，直接清理。
+
+### BUG 2 (严重): 历史记录图片 MIME 类型错误 — `history.ts`
+- **问题**: 保存历史时所有图片固定用 `.png` 扩展名和 `image/png` MIME，但 `image-gen.ts` 中非主图输出的是 JPEG。导致读取历史记录时 JPEG 图片被错误标记为 PNG，浏览器可能无法正确渲染。
+- **修复**: 保存时从 data URL 提取真实 MIME 类型（`image/jpeg` 或 `image/png`），用对应扩展名（`.jpg`/`.png`）。读取时从存储的 `mime` 字段还原，兼容旧数据用扩展名 fallback。
+- **思路**: 跟踪数据的真实格式，而不是硬编码假设。
+
+### BUG 3 (中等): MODEL 变量模块顶层求值 — `image-gen.ts`
+- **问题**: `const MODEL = process.env.GENERATE_MODEL || "..."` 在模块加载时一次性求值。如果环境变量运行时变更不会反映。同文件的 `getClient()` 每次调用时读取 env，行为不一致。
+- **修复**: 改为 `getModel()` 函数，每次调用时读取 `process.env`。
+- **思路**: 与 `getClient()` 保持一致的懒读取模式。
+
+### BUG 4 (中等): generate 路由缺少 try-catch — `generate/route.ts`
+- **问题**: `formData` 解析和 `JSON.parse(plans)` 在创建 SSE stream 之前执行，没有 try-catch。如果请求格式错误会抛未捕获异常导致 500。其他路由（analyze、regenerate）都有 try-catch 保护。
+- **修复**: 给 `req.formData()` 和 `JSON.parse()` 分别加 try-catch，并增加 `plans.length === 0` 的前置校验。
+- **思路**: 防御性编程，在进入流式处理之前拦截所有可预见的输入错误。
+
+### BUG 5 (中等): dimensions 类型图片误报 warning — `prompt-templates.ts` + `generation-guard.ts`
+- **问题**: `validatePlan()` 检查 prompt 是否包含 "clean corners"、"product identity rule"、"structure lock rule" 文本。但 dimensions 类型的 prompt 模板没有包含这三条规则，导致每次生成 dimensions 图都会触发 3 条虚假 warning。
+- **修复**: 在 dimensions prompt 模板中补上 `cleanCornerRule`、`productIdentityRule`、`structureLockRule`。
+- **思路**: prompt 模板应包含验证器期望的所有规则，保持一致性。同时这三条规则对 dimensions 图片也确实有用（防水印、保持产品外观）。
+
+### BUG 6 (安全): 历史记录路径遍历风险 — `history.ts`
+- **问题**: `getHistoryEntry(id)` 中 `id` 直接来自 URL query 参数，拼接到文件路径后无校验。攻击者可传 `../../etc` 等路径读取服务器任意目录。
+- **修复**: 新增 `isSafeId()` 函数，只允许 `[\w-]+`（字母数字下划线短横线）格式的 ID，不匹配则返回 null。
+- **思路**: 输入校验在安全边界做，白名单比黑名单更安全。
+
+### BUG 8 (低): saveToHistory 重复保存 — `page.tsx`
+- **问题**: `useEffect` 监听 `[step, isGenerating, saveToHistory]`，而 `saveToHistory` 是 `useCallback`，依赖 `jobs`/`analysis`/`salesRegion`。每次这些状态变化都会创建新的函数引用，重新触发 effect，导致历史记录被重复保存多次。
+- **修复**: 用 `useRef(false)` 标记是否已保存。进入 results 时只保存一次，离开 results 时重置标记。
+- **思路**: ref 不会触发重渲染，是防止 effect 重复执行的标准模式。
+
+**审查思路**:
+按模块分层审查：API 路由 → 核心库 → 前端组件 → 主页面逻辑。重点关注：数据流一致性（MIME 类型跨层传递）、输入校验（安全边界防御）、状态管理（React effect 的依赖陷阱）、错误处理完整性。
+
+---
+
 ## 2026-03-18 — 添加一键启动脚本
 
 **提交**: `8b19daa`

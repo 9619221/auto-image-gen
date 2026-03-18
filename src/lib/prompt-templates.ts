@@ -617,6 +617,9 @@ STYLE:
           prompt: `Create a refined dimensions image for ${productName}.
 
 ⚠️ ${langRule}
+${cleanCornerRule}
+${productIdentityRule}
+${structureLockRule}
 🔒 Show ONLY ONE product. Keep the product identical to the reference.
 
 LAYOUT:

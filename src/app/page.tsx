@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import ImageUploader from "@/components/ImageUploader";
 import type { UploadImageItem } from "@/components/ImageUploader";
 import type { ProductMode } from "@/lib/types";
@@ -251,10 +251,15 @@ export default function Home() {
     }
   }, [originalImages, plans, productMode, salesRegion, analysis]);
 
-  // 生成完成后自动保存历史
+  // 生成完成后自动保存历史（仅保存一次）
+  const historySavedRef = useRef(false);
   useEffect(() => {
-    if (step === "results" && !isGenerating) {
+    if (step === "results" && !isGenerating && !historySavedRef.current) {
+      historySavedRef.current = true;
       saveToHistory();
+    }
+    if (step !== "results") {
+      historySavedRef.current = false;
     }
   }, [step, isGenerating, saveToHistory]);
 

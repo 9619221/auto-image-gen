@@ -65,7 +65,9 @@ function getClient() {
   });
 }
 
-const MODEL = process.env.GENERATE_MODEL || "gemini-3.1-flash-image-preview";
+function getModel() {
+  return process.env.GENERATE_MODEL || "gemini-3.1-flash-image-preview";
+}
 
 function extractImageBase64(content: string): string | null {
   const match = content.match(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/);
@@ -133,7 +135,7 @@ export async function generateProductImage(
   content.push({ type: "text", text: multiNote + globalRules + prompt + "\n\n" + finalCheck });
 
   const response = await getClient().chat.completions.create({
-    model: MODEL,
+    model: getModel(),
     messages: [{ role: "user", content }],
     max_tokens: 4000,
   });

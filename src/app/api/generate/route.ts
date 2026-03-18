@@ -12,13 +12,29 @@ export async function POST(req: NextRequest) {
   const authError = authenticateRequest(req);
   if (authError) return authError;
 
-  const formData = await req.formData();
+  let formData: FormData;
+  try {
+    formData = await req.formData();
+  } catch {
+    return NextResponse.json({ error: "请求数据解析失败" }, { status: 400 });
+  }
+
   const validation = validateUploadedFiles(formData);
   if (!validation.ok) {
     return NextResponse.json({ error: validation.error }, { status: 400 });
   }
 
-  const plans = JSON.parse(String(formData.get("plans") || "[]")) as ImagePlan[];
+  let plans: ImagePlan[];
+  try {
+    plans = JSON.parse(String(formData.get("plans") || "[]")) as ImagePlan[];
+  } catch {
+    return NextResponse.json({ error: "生成方案数据格式错误" }, { status: 400 });
+  }
+
+  if (plans.length === 0) {
+    return NextResponse.json({ error: "未提供生成方案" }, { status: 400 });
+  }
+
   const productMode = String(formData.get("productMode") || "single") as "single" | "bundle";
   const imageLanguage = String(formData.get("imageLanguage") || "en") as AnalysisLanguage;
   const originalImages = await filesToDataUrls(validation.files);
