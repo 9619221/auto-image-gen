@@ -113,6 +113,56 @@ const BENEFIT_MAP: BenefitMatch[] = [
   { pattern: /unisex|男女|for.?men|for.?women/i,
     painPoint: "For Him & Her", benefit: "Unisex Style", badge: "Unisex" },
 
+  // === Beauty / Cosmetics / Nail / Skincare ===
+  { pattern: /nail.?polish|nail.?lacquer|甲油|指甲油/i,
+    painPoint: "Salon-Quality Color", benefit: "Rich Pigment Formula", badge: "Vivid Color" },
+  { pattern: /quick.?dry|fast.?dry|速干/i,
+    painPoint: "No More Waiting", benefit: "Quick Dry Formula", badge: "Quick Dry" },
+  { pattern: /chip.?resist|long.?lasting|持久|不掉色/i,
+    painPoint: "Color That Lasts", benefit: "Chip-Resistant Finish", badge: "Long Wear" },
+  { pattern: /gel|凝胶/i,
+    painPoint: "Gel-Like Shine", benefit: "Mirror-Finish Gloss", badge: "Gel Finish" },
+  { pattern: /matte|哑光/i,
+    painPoint: "Smooth Matte Look", benefit: "Velvet Matte Finish", badge: "Matte" },
+  { pattern: /glitter|shimmer|metallic|闪|金属光泽/i,
+    painPoint: "Eye-Catching Sparkle", benefit: "Metallic Shimmer Finish", badge: "Shimmer" },
+  { pattern: /lipstick|lip.?gloss|口红|唇膏|唇彩/i,
+    painPoint: "Bold Lip Color", benefit: "Smooth Application", badge: "Creamy" },
+  { pattern: /mascara|睫毛膏/i,
+    painPoint: "Dramatic Lashes", benefit: "Volume & Length", badge: "Volumizing" },
+  { pattern: /foundation|粉底/i,
+    painPoint: "Flawless Coverage", benefit: "Lightweight Formula", badge: "Blendable" },
+  { pattern: /eyeshadow|eye.?shadow|眼影/i,
+    painPoint: "Vibrant Eye Color", benefit: "Highly Pigmented", badge: "Pigmented" },
+  { pattern: /skincare|serum|moisturiz|cream|lotion|护肤|精华|面霜/i,
+    painPoint: "Healthy Glow", benefit: "Nourishing Formula", badge: "Hydrating" },
+  { pattern: /sunscreen|spf|防晒/i,
+    painPoint: "Daily Sun Protection", benefit: "Lightweight SPF Shield", badge: "UV Shield" },
+  { pattern: /makeup|cosmetic|beauty|化妆|美妆/i,
+    painPoint: "Effortless Beauty", benefit: "Professional Finish", badge: "Pro Finish" },
+  { pattern: /brush|applicator|刷子|化妆刷/i,
+    painPoint: "Flawless Application", benefit: "Soft Bristle Design", badge: "Soft Touch" },
+
+  // === Home Décor / Flowers / Plants ===
+  { pattern: /artificial|faux|fake|silk.?flower|仿真|假花|绢花/i,
+    painPoint: "Always in Bloom", benefit: "Lifelike Faux Flowers", badge: "Lifelike" },
+  { pattern: /baby.?breath|gypsophila|满天星/i,
+    painPoint: "Delicate Floral Touch", benefit: "Realistic Baby's Breath", badge: "Realistic" },
+  { pattern: /bouquet|花束/i,
+    painPoint: "Instant Elegance", benefit: "Ready-Made Bouquet", badge: "Bouquet" },
+  { pattern: /vase|花瓶/i,
+    painPoint: "Perfect Centerpiece", benefit: "Elegant Vase Design", badge: "Elegant" },
+  { pattern: /wreath|花环/i,
+    painPoint: "Warm Welcome", benefit: "Decorative Wreath", badge: "Decor" },
+  { pattern: /candle|蜡烛|香薰/i,
+    painPoint: "Set the Mood", benefit: "Warm Ambient Glow", badge: "Ambient" },
+  { pattern: /frame|picture|photo.?frame|相框/i,
+    painPoint: "Showcase Your Memories", benefit: "Classic Frame Design", badge: "Display" },
+  { pattern: /pillow|cushion|抱枕|靠垫/i,
+    painPoint: "Cozy Comfort", benefit: "Soft & Plush", badge: "Plush" },
+  { pattern: /curtain|窗帘/i,
+    painPoint: "Light & Privacy Control", benefit: "Quality Fabric Drapes", badge: "Elegant" },
+
   // === Cleaning / disposable ===
   { pattern: /dispos|one.?time|throw.?away|no.?clean|no.?wash|skip.?clean/i,
     painPoint: "Hate Doing Dishes?", benefit: "Zero Cleanup", badge: "Use & Toss" },
@@ -367,8 +417,47 @@ function deriveResultHeadline(scene: string, audience: string, category: string,
   if (/cloth|dress|shirt|jacket|coat|服装|衣/.test(cat)) return "Wear With Confidence";
   if (/shoe|boot|sneaker|sandal|鞋|靴/.test(cat)) return "Step Up Your Style";
 
+  // Beauty / Cosmetics / Nail / Skincare
+  if (/nail.?polish|nail.?lacquer|甲油|指甲油/.test(ctx2)) {
+    const nailHeadlines = ["Salon-Quality Color", "Color That Pops", "Bold & Beautiful", "Flawless Finish"];
+    return nailHeadlines[Math.floor(Math.random() * nailHeadlines.length)];
+  }
+  if (/lipstick|lip.?gloss|口红|唇膏/.test(ctx2)) return "Bold Lip, Bold You";
+  if (/mascara|睫毛膏/.test(ctx2)) return "Lash Out Loud";
+  if (/foundation|粉底/.test(ctx2)) return "Flawless All Day";
+  if (/eyeshadow|eye.?shadow|眼影/.test(ctx2)) return "Eyes That Dazzle";
+  if (/skincare|serum|moisturiz|cream|lotion|护肤|精华|面霜/.test(ctx2)) return "Glow From Within";
+  if (/sunscreen|spf|防晒/.test(ctx2)) return "Sun-Ready Skin";
+  if (/makeup|cosmetic|beauty|化妆|美妆/.test(cat)) {
+    const beautyHeadlines = ["Effortless Beauty", "Look Your Best", "Beauty Made Simple", "Glow Up"];
+    return beautyHeadlines[Math.floor(Math.random() * beautyHeadlines.length)];
+  }
+
+  // Home Décor / Flowers / Plants
+  if (/baby.?breath|gypsophila|满天星/.test(ctx2)) return "Delicate Floral Touch";
+  if (/artificial|faux|fake|silk.?flower|仿真花|假花/.test(ctx2)) return "Always in Bloom";
+  if (/bouquet|花束/.test(ctx2)) return "Instant Elegance";
+  if (/flower|floral|花/.test(cat)) {
+    const flowerHeadlines = ["Bloom All Year", "Fresh Look, No Fuss", "Nature's Beauty", "Lasting Bloom"];
+    return flowerHeadlines[Math.floor(Math.random() * flowerHeadlines.length)];
+  }
+  if (/candle|蜡烛|香薰/.test(ctx2)) return "Set the Mood";
+  if (/pillow|cushion|抱枕|靠垫/.test(ctx2)) return "Cozy Comfort";
+  if (/curtain|窗帘/.test(ctx2)) return "Elegant Drape";
+  if (/decor|decorat|home.?accent|装饰|摆件/.test(cat)) {
+    const decorHeadlines = ["Elevate Your Space", "Style Your Room", "Instant Room Refresh"];
+    return decorHeadlines[Math.floor(Math.random() * decorHeadlines.length)];
+  }
+
   // Pet products
   if (/pet|dog|cat|puppy|kitten|宠物|猫|狗/.test(cat)) return "Pet-Approved";
+
+  // Electronics / Tech
+  if (/charg|cable|adapter|充电|数据线/.test(ctx2)) return "Stay Powered Up";
+  if (/headphone|earphone|earbud|speaker|耳机|音箱/.test(ctx2)) return "Sound Perfected";
+  if (/phone.?case|手机壳/.test(ctx2)) return "Style & Protection";
+  if (/keyboard|mouse|键盘|鼠标/.test(ctx2)) return "Type in Comfort";
+  if (/light|lamp|led|灯/.test(ctx2)) return "Light Up Your Space";
 
   // Then fall back to scene-based matching
   const ctx = `${scene} ${audience} ${category}`.toLowerCase();
@@ -380,7 +469,7 @@ function deriveResultHeadline(scene: string, audience: string, category: string,
   if (/family|kid|parent|baby|child|party/.test(ctx)) return "Family Favorite";
   if (/tech|electronic|computer|phone|gadget|charg/.test(ctx)) return "Tech Essentials";
   if (/beauty|skin|hair|makeup|grooming/.test(ctx)) return "Look Your Best";
-  if (/home|house|room|living|bedroom/.test(ctx)) return "Home Upgrade";
+  if (/home|house|room|living|bedroom/.test(ctx)) return "Elevate Your Space";
   return `Perfect for ${audience}`;
 }
 
@@ -443,6 +532,51 @@ function getCategorySceneGuide(category: string, productName: string): string {
 `;
   }
 
+  // Beauty / Cosmetics / Nail
+  if (/nail.?polish|nail.?lacquer|lipstick|mascara|makeup|cosmetic|beauty|eyeshadow|foundation|甲油|指甲油|口红|化妆|美妆/.test(ctx)) {
+    const beautyScenes = [
+      "getting ready for a night out — vanity mirror, warm lighting, elegant setting",
+      "relaxing self-care evening at home — cozy bathroom, candles, soft light",
+      "at a chic café showing off manicured nails while holding a coffee cup",
+      "having a girls' night getting ready together — fun, cheerful atmosphere",
+      "elegant dinner setting — table, wine glass, soft candlelight",
+      "casual weekend brunch — bright natural light, stylish outfit",
+    ];
+    const chosenScene = beautyScenes[Math.floor(Math.random() * beautyScenes.length)];
+    return `
+🎬 SCENE DIRECTION (Beauty/Cosmetics):
+- USE THIS SPECIFIC SCENE: ${chosenScene}
+- Show the product being USED or the RESULT of using it (e.g., painted nails, applied makeup)
+- Background: glamorous but approachable, warm tones, soft lighting
+- Do NOT use: office/work scenes, gym, kitchen, industrial settings
+- Do NOT use: construction/hardware language in any text overlays
+- The model should look confident, stylish, and beautiful
+- For nail polish: focus on the NAILS — show painted nails prominently with the bottle nearby
+`;
+  }
+
+  // Home Décor / Flowers
+  if (/flower|floral|artificial|faux|bouquet|wreath|花|仿真|花束|花环/.test(ctx)) {
+    const flowerScenes = [
+      "elegant living room with the flowers in a vase on a coffee table — natural light from window",
+      "bright kitchen counter with the flowers as a centerpiece — warm morning light",
+      "bedroom nightstand with the flowers — cozy, romantic atmosphere",
+      "dining table setting with the flowers as centerpiece — elegant dinner party mood",
+      "entryway console table with the flowers welcoming guests — bright and inviting",
+      "wedding or event table decoration — romantic, dreamy atmosphere",
+    ];
+    const chosenScene = flowerScenes[Math.floor(Math.random() * flowerScenes.length)];
+    return `
+🎬 SCENE DIRECTION (Home Décor/Flowers):
+- USE THIS SPECIFIC SCENE: ${chosenScene}
+- Show the product displayed beautifully in a REAL home or event setting
+- Background: warm, inviting, well-decorated interior
+- The flowers/décor should be the HERO of the shot — prominent and well-lit
+- Do NOT use: outdoor wilderness, gym, office cubicle
+- Styling: clean, modern, aspirational home — think Pinterest or interior design magazine
+`;
+  }
+
   if (/pet|dog|cat|puppy|kitten|宠物|猫|狗/.test(ctx)) {
     return `
 🎬 SCENE DIRECTION (Pet Products):
@@ -466,11 +600,34 @@ function deriveValueHeadline(category: string, productName: string, materials: s
   if (/jade|翡翠|玉/.test(ctx)) return "Authentic Jade";
   if (/ring|jewel|necklace|bracelet|earring|pendant|charm|bead|gem|stone|饰品|戒指|项链|手链|耳环|珠/.test(ctx)) return "Natural Stone Quality";
 
+  // Beauty / Cosmetics
+  if (/nail.?polish|nail.?lacquer|甲油|指甲油/.test(ctx)) return "Salon-Grade Formula";
+  if (/lipstick|lip.?gloss|口红|唇膏/.test(ctx)) return "Rich Color Payoff";
+  if (/mascara|睫毛膏/.test(ctx)) return "Dramatic Volume";
+  if (/foundation|粉底/.test(ctx)) return "Smooth Coverage";
+  if (/eyeshadow|eye.?shadow|眼影/.test(ctx)) return "Vivid Pigment";
+  if (/skincare|serum|moisturiz|cream|lotion|护肤|精华|面霜/.test(ctx)) return "Nourishing Formula";
+  if (/makeup|cosmetic|beauty|化妆|美妆/.test(ctx)) return "Professional Quality";
+
+  // Home Décor / Flowers
+  if (/artificial|faux|fake|silk.?flower|仿真|假花/.test(ctx)) return "Lifelike Design";
+  if (/baby.?breath|gypsophila|满天星/.test(ctx)) return "Realistic Detail";
+  if (/bouquet|花束/.test(ctx)) return "Ready to Display";
+  if (/flower|floral|花/.test(ctx)) return "Nature-Inspired";
+  if (/candle|蜡烛|香薰/.test(ctx)) return "Warm Ambiance";
+  if (/decor|decorat|装饰|摆件/.test(ctx)) return "Thoughtful Design";
+
+  // Electronics / Tech
+  if (/charg|cable|adapter|充电|数据线/.test(ctx)) return "Fast & Reliable";
+  if (/headphone|earphone|earbud|speaker|耳机|音箱/.test(ctx)) return "Clear Sound Quality";
+  if (/phone.?case|手机壳/.test(ctx)) return "Tough Protection";
+  if (/keyboard|mouse|键盘|鼠标/.test(ctx)) return "Precision Control";
+
   if (/aluminum|steel|metal|iron/.test(ctx)) return "Built to Last";
   if (/food.?grade|bpa.?free|safe|non.?toxic/.test(ctx)) return "Food-Safe Quality";
   if (/bamboo|wood|natural|organic|eco/.test(ctx)) return "Nature-Inspired";
-  if (/premium|luxury|high.?end/.test(ctx)) return "Premium Choice";
-  if (/pack|set|count|piece/.test(ctx)) return "Best Value Pack";
+  if (/premium|luxury|high.?end/.test(ctx)) return "Top-Tier Quality";
+  if (/pack|set|count|piece/.test(ctx)) return "Great Value Set";
   if (/silicone|rubber|flexible/.test(ctx)) return "Flexible & Durable";
   if (/cotton|fabric|textile|linen/.test(ctx)) return "Soft & Durable";
   if (/glass|ceramic|porcelain/.test(ctx)) return "Elegant & Sturdy";

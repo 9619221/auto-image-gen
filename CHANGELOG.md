@@ -2,6 +2,26 @@
 
 ---
 
+## 2026-03-19 — 新增美妆/家居/电子品类文案系统
+
+### 改了什么
+- **美妆/化妆品品类** — 指甲油、口红、睫毛膏、粉底、眼影、护肤品各有专属标语和场景
+  - 指甲油标语：`Salon-Quality Color`、`Bold & Beautiful`、`Color That Pops`（替代之前的 `Built Tough`、`Work Smarter`）
+  - Lifestyle 场景：梳妆台、咖啡馆秀美甲、闺蜜聚会等 6 种随机
+- **家居装饰/花卉品类** — 满天星、仿真花、花束、蜡烛、窗帘等各有专属文案
+  - Lifestyle 场景：客厅花瓶、餐桌中心、卧室床头等 6 种随机
+- **电子/科技品类** — 充电器、耳机、手机壳、键鼠、灯具各有专属文案
+- **BENEFIT_MAP 扩展** — 新增 25+ 条美妆/家居/电子品类匹配规则
+- **修复 "Home Upgrade" → "Elevate Your Space"** — 更适合家居品类
+
+### 思路
+之前指甲油生成出 "Built Tough, Won't Bend"、"Extra Sturdy" 等五金风格文案，因为 `deriveResultHeadline` 和 `BENEFIT_MAP` 缺少美妆品类判断，产品落入了通用文案池。通过在 4 个关键函数（`BENEFIT_MAP`、`deriveResultHeadline`、`deriveValueHeadline`、`getCategorySceneGuide`）中加入美妆/家居/电子品类的检测和专属文案，确保不同品类使用对应风格的标语和场景。
+
+### 修改文件
+- `src/lib/prompt-templates.ts` — BENEFIT_MAP +25 条规则，deriveResultHeadline +30 行品类判断，deriveValueHeadline +15 行，getCategorySceneGuide +2 个品类场景库
+
+---
+
 ## 2026-03-18 — 安全修复 + 违禁词过滤 + 图片质量优化（大版本更新）
 
 ### 安全修复（严重）
