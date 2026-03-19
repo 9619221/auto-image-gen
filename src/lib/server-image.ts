@@ -13,7 +13,7 @@ export function detectImageMime(buffer: Buffer): string {
       buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50) {
     return "image/webp";
   }
-  return "image/png"; // fallback
+  return "application/octet-stream"; // unknown format
 }
 
 export async function fileToDataUrl(file: File): Promise<string> {

@@ -29,6 +29,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
+    if (!body || !body.productName || !Array.isArray(body.images) || body.images.length === 0) {
+      return NextResponse.json({ error: "缺少必要字段" }, { status: 400 });
+    }
     const id = await saveHistory(body);
     return NextResponse.json({ id });
   } catch (error) {

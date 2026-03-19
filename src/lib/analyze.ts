@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import type { AnalysisResult } from "./types";
+import { extractJSON, validateShape } from "./sanitize";
 
 // 单例客户端
 let _analyzeClient: OpenAI | null = null;
@@ -67,10 +68,25 @@ export async function analyzeProduct(
   });
 
   const text = response.choices[0]?.message?.content ?? "";
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
+  const defaults: AnalysisResult = {
+    productName: "未知商品",
+    category: "",
+    sellingPoints: [],
+    materials: "",
+    colors: "",
+    targetAudience: [],
+    usageScenes: [],
+    estimatedDimensions: "",
+  };
+
+  const parsed = extractJSON<AnalysisResult>(text, defaults);
+  if (!parsed) {
     throw new Error("Failed to parse analysis result");
   }
 
-  return JSON.parse(jsonMatch[0]) as AnalysisResult;
+  return validateShape<AnalysisResult>(
+    parsed,
+    ["productName", "category", "sellingPoints", "materials", "colors", "targetAudience", "usageScenes", "estimatedDimensions"],
+    defaults
+  );
 }

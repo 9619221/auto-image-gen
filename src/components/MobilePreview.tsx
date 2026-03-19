@@ -81,7 +81,7 @@ export default function MobilePreview({ jobs }: MobilePreviewProps) {
                       >
                         <img
                           src={job.finalImageUrl}
-                          alt=""
+                          alt={`缩略图 ${idx + 1}`}
                           className="w-full h-full object-cover"
                         />
                       </button>
@@ -135,7 +135,7 @@ export default function MobilePreview({ jobs }: MobilePreviewProps) {
                       <div className="aspect-square bg-slate-50">
                         <img
                           src={job.finalImageUrl}
-                          alt=""
+                          alt={`预览图 ${idx + 1}`}
                           className="w-full h-full object-cover"
                         />
                       </div>

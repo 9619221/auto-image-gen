@@ -1,3 +1,5 @@
+import { detectImageMime } from "./server-image";
+
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB per file
 const MAX_FILES = 5;
 const ALLOWED_TYPES = new Set([
@@ -13,7 +15,7 @@ export interface UploadValidation {
   files: File[];
 }
 
-export function validateUploadedFiles(formData: FormData): UploadValidation {
+export async function validateUploadedFiles(formData: FormData): Promise<UploadValidation> {
   const files = formData
     .getAll("images")
     .filter((value): value is File => value instanceof File);
@@ -27,17 +29,21 @@ export function validateUploadedFiles(formData: FormData): UploadValidation {
   }
 
   for (const file of files) {
-    if (!ALLOWED_TYPES.has(file.type)) {
-      return {
-        ok: false,
-        error: `不支持的文件类型: ${file.type || "unknown"}`,
-        files: [],
-      };
-    }
     if (file.size > MAX_FILE_SIZE) {
       return {
         ok: false,
         error: `文件 ${file.name} 超过 10MB 限制`,
+        files: [],
+      };
+    }
+
+    // Verify actual file type via magic bytes instead of trusting client MIME
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const actualMime = detectImageMime(buffer);
+    if (!ALLOWED_TYPES.has(actualMime)) {
+      return {
+        ok: false,
+        error: `文件 ${file.name} 不是支持的图片格式`,
         files: [],
       };
     }

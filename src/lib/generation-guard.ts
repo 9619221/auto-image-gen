@@ -55,15 +55,15 @@ export function validatePlan(plan: ImagePlan): PlanValidationResult {
     warnings.push('Dimensions image prompt is still too dense');
   }
 
-  if (!/keep all four corners completely clean/i.test(prompt)) {
+  if (!/clean.?corner|corner.{0,20}clean|no.?watermark|四角.{0,10}干净/i.test(prompt)) {
     warnings.push('Prompt is missing strong clean-corner anti-watermark rule');
   }
 
-  if (!/product identity rule/i.test(prompt)) {
+  if (!/product.?identity|产品.{0,5}(一致|身份|还原)/i.test(prompt)) {
     warnings.push('Prompt is missing product-identity locking rule');
   }
 
-  if (!/structure lock rule/i.test(prompt)) {
+  if (!/structure.?lock|结构.{0,5}(锁定|保持)/i.test(prompt)) {
     warnings.push('Prompt is missing structure-lock rule');
   }
 

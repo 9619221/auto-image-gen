@@ -98,7 +98,7 @@ export async function listHistory(): Promise<HistoryMeta[]> {
         salesRegion: meta.salesRegion,
         imageCount: meta.imageCount,
       });
-    } catch { /* skip invalid entries */ }
+    } catch (err) { console.warn(`[History] Failed to read ${metaPath}:`, err); }
   }
 
   // Sort newest first
@@ -120,12 +120,14 @@ export async function getHistoryEntry(id: string): Promise<HistoryEntry | null> 
       const imgPath = path.join(entryDir, ref.filename);
       try {
         const imgBuf = await fs.readFile(imgPath);
-        const mime = detectImageMime(imgBuf);
+        // Use stored MIME from meta if available, fallback to detection
+        const mime = ref.mime || detectImageMime(imgBuf);
+        const safeMime = mime === "application/octet-stream" ? "image/png" : mime;
         images.push({
           imageType: ref.imageType,
-          imageUrl: `data:${mime};base64,${imgBuf.toString("base64")}`,
+          imageUrl: `data:${safeMime};base64,${imgBuf.toString("base64")}`,
         });
-      } catch { /* skip missing images */ }
+      } catch (err) { console.warn(`[History] Failed to read image ${ref.filename}:`, err); }
     }
 
     return {
@@ -150,6 +152,6 @@ async function cleanupOldEntries() {
     const entryDir = path.join(HISTORY_DIR, entry.id);
     try {
       await fs.rm(entryDir, { recursive: true, force: true });
-    } catch { /* ignore */ }
+    } catch (err) { console.warn(`[History] Failed to delete ${entry.id}:`, err); }
   }
 }

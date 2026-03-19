@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateRequest } from "@/lib/api-auth";
+import { authenticateRequest, checkRateLimit } from "@/lib/api-auth";
+import { sanitizeForPrompt } from "@/lib/sanitize";
+import { extractJSON } from "@/lib/sanitize";
 import OpenAI from "openai";
 
 function getClient() {
@@ -14,12 +16,13 @@ function getClient() {
 export async function POST(req: NextRequest) {
   const authError = authenticateRequest(req);
   if (authError) return authError;
+  const rateLimitError = checkRateLimit(req, "default");
+  if (rateLimitError) return rateLimitError;
 
   try {
-    const { competitorTitle, myProductName } = (await req.json()) as {
-      competitorTitle: string;
-      myProductName: string;
-    };
+    const body = await req.json();
+    const competitorTitle = sanitizeForPrompt(body?.competitorTitle ?? "", 300);
+    const myProductName = sanitizeForPrompt(body?.myProductName ?? "", 200);
 
     if (!competitorTitle) {
       return NextResponse.json({ error: "请输入竞品标题" }, { status: 400 });
@@ -57,13 +60,12 @@ export async function POST(req: NextRequest) {
     });
 
     const text = response.choices[0]?.message?.content ?? "";
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    const result = extractJSON(text);
 
-    if (!jsonMatch) {
+    if (!result) {
       return NextResponse.json({ error: "关键词分析失败" }, { status: 500 });
     }
 
-    const result = JSON.parse(jsonMatch[0]);
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(

@@ -1,6 +1,7 @@
 import type { AnalysisResult, ImageType, ImagePlan, SalesRegion } from "./types";
 import { IMAGE_TYPE_LABELS, REGION_CONFIGS, regionToLanguage, LANGUAGE_ENGLISH_NAMES } from "./types";
 import { filterProhibitedWords } from "./prohibited-words";
+import { sanitizeForPrompt, sanitizeArray } from "./sanitize";
 
 // ===== Text Utilities =====
 
@@ -870,7 +871,20 @@ export function generatePlans(
 - Do not add, remove, or redesign any structural parts
 `;
 
-  const strategy = inferProductStrategy(analysis);
+  // Sanitize analysis fields to prevent prompt injection via user-edited data
+  const sanitizedAnalysis: AnalysisResult = {
+    ...analysis,
+    productName: sanitizeForPrompt(analysis.productName, 200),
+    category: sanitizeForPrompt(analysis.category || "", 100),
+    sellingPoints: sanitizeArray(analysis.sellingPoints || [], 200),
+    materials: sanitizeForPrompt(analysis.materials || "", 100),
+    colors: sanitizeForPrompt(analysis.colors || "", 200),
+    targetAudience: sanitizeArray(analysis.targetAudience || [], 200),
+    usageScenes: sanitizeArray(analysis.usageScenes || [], 200),
+    estimatedDimensions: sanitizeForPrompt(analysis.estimatedDimensions || "", 100),
+  };
+
+  const strategy = inferProductStrategy(sanitizedAnalysis);
   const { productName } = strategy;
 
   const brandSystemRule = `
@@ -983,7 +997,7 @@ If the provided headline or badge text contains any prohibited word, SKIP that t
 `;
 
   // 动态规则实例化
-  const colorRule = colorAccuracyRule(analysis.colors || "");
+  const colorRule = colorAccuracyRule(sanitizedAnalysis.colors || "");
   const diversityRule = modelDiversityRule;
 
   const textSafeZoneRule = `
@@ -1198,7 +1212,7 @@ LAYOUT:
 TEXT RULES:
 - Short labels only
 - Small header: "Size Guide"
-- Match these values: ${analysis.estimatedDimensions}
+- Match these values: ${sanitizedAnalysis.estimatedDimensions}
 
 STYLE:
 - Premium brand size-guide look

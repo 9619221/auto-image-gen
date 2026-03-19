@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest, checkRateLimit } from "@/lib/api-auth";
+import { extractJSON } from "@/lib/sanitize";
 import OpenAI from "openai";
 import type { ImageScore } from "@/lib/types";
 
@@ -83,13 +84,11 @@ Return ONLY valid JSON:
     });
 
     const text = response.choices[0]?.message?.content ?? "";
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    const raw = extractJSON(text);
 
-    if (!jsonMatch) {
+    if (!raw) {
       return NextResponse.json({ error: "评分解析失败" }, { status: 500 });
     }
-
-    const raw = JSON.parse(jsonMatch[0]);
     const score: ImageScore = {
       clarity: Math.min(10, Math.max(1, Number(raw.clarity) || 5)),
       composition: Math.min(10, Math.max(1, Number(raw.composition) || 5)),

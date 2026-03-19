@@ -3,7 +3,7 @@ import { authenticateRequest, checkRateLimit } from "@/lib/api-auth";
 import OpenAI from "openai";
 import type { AnalysisResult } from "@/lib/types";
 import { filterProhibitedWords } from "@/lib/prohibited-words";
-import { sanitizeForPrompt, sanitizeArray } from "@/lib/sanitize";
+import { sanitizeForPrompt, sanitizeArray, extractJSON } from "@/lib/sanitize";
 
 let _titleClient: OpenAI | null = null;
 function getClient() {
@@ -83,13 +83,11 @@ export async function POST(req: NextRequest) {
     });
 
     const text = response.choices[0]?.message?.content ?? "";
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    const result = extractJSON(text);
 
-    if (!jsonMatch) {
+    if (!result) {
       return NextResponse.json({ error: "标题生成解析失败" }, { status: 500 });
     }
-
-    const result = JSON.parse(jsonMatch[0]);
 
     // 过滤标题中的违禁词
     if (result.titles && Array.isArray(result.titles)) {

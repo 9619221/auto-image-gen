@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateRequest } from "@/lib/api-auth";
+import { authenticateRequest, checkRateLimit } from "@/lib/api-auth";
+import { extractJSON } from "@/lib/sanitize";
 import OpenAI from "openai";
 import type { ImageScore } from "@/lib/types";
 
@@ -15,6 +16,8 @@ function getClient() {
 export async function POST(req: NextRequest) {
   const authError = authenticateRequest(req);
   if (authError) return authError;
+  const rateLimitError = checkRateLimit(req, "default");
+  if (rateLimitError) return rateLimitError;
 
   try {
     const { scores, imageTypes } = (await req.json()) as {
@@ -72,13 +75,12 @@ ${scoreDetails}
     });
 
     const text = response.choices[0]?.message?.content ?? "";
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    const result = extractJSON(text);
 
-    if (!jsonMatch) {
+    if (!result) {
       return NextResponse.json({ error: "排序分析失败" }, { status: 500 });
     }
 
-    const result = JSON.parse(jsonMatch[0]);
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(

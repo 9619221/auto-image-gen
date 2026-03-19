@@ -128,23 +128,36 @@ export async function generateProductImage(
 
   content.push({ type: "text", text: multiNote + globalRules + prompt + "\n\n" + finalCheck });
 
-  const response = await getClient().chat.completions.create({
-    model: getModel(),
-    messages: [{ role: "user", content }],
-    max_tokens: 4000,
-  });
+  // Retry up to 2 times on transient failures
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const response = await getClient().chat.completions.create({
+        model: getModel(),
+        messages: [{ role: "user", content }],
+        max_tokens: 4000,
+      });
 
-  const text = response.choices[0]?.message?.content ?? "";
-  const imgData = extractImageBase64(text);
-  if (!imgData) {
-    throw new Error("AI 未能生成图片，请重试");
-  }
-  const isMain = imageType === "main";
-  const resized = await resizeToTarget(imgData, !isMain);
+      const text = response.choices[0]?.message?.content ?? "";
+      const imgData = extractImageBase64(text);
+      if (!imgData) {
+        lastError = new Error("AI 未能生成图片，请重试");
+        continue;
+      }
 
-  // Force pure white background for hero/main images (Amazon requirement)
-  if (isMain) {
-    return enforceWhiteBackground(resized);
+      const isMain = imageType === "main";
+      const resized = await resizeToTarget(imgData, !isMain);
+
+      if (isMain) {
+        return enforceWhiteBackground(resized);
+      }
+      return resized;
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      if (attempt < 1) {
+        await new Promise(r => setTimeout(r, 2000)); // wait 2s before retry
+      }
+    }
   }
-  return resized;
+  throw lastError ?? new Error("AI 未能生成图片，请重试");
 }

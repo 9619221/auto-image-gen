@@ -6,8 +6,19 @@ import { NextRequest, NextResponse } from "next/server";
  * If API_SECRET is not set, authentication is skipped (dev mode).
  */
 export function authenticateRequest(req: NextRequest): NextResponse | null {
+  // 同源请求跳过认证（前端页面内部调用 API）
+  if (isSameOriginRequest(req)) {
+    return null;
+  }
+
   const secret = process.env.API_SECRET;
-  if (!secret) return null; // No secret configured = open access (dev mode)
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      console.error("[AUTH] API_SECRET not configured in production — rejecting request");
+      return NextResponse.json({ error: "服务器认证未配置" }, { status: 500 });
+    }
+    return null; // Dev mode: open access
+  }
 
   const authHeader = req.headers.get("authorization");
   if (!authHeader || authHeader !== `Bearer ${secret}`) {
@@ -15,6 +26,45 @@ export function authenticateRequest(req: NextRequest): NextResponse | null {
   }
 
   return null; // Auth passed
+}
+
+/**
+ * 判断是否为同源请求
+ * 浏览器发起的同源 fetch 请求会带有 Sec-Fetch-Site: same-origin，
+ * 或者 Origin/Referer 与当前 Host 匹配。
+ */
+function isSameOriginRequest(req: NextRequest): boolean {
+  // Sec-Fetch-Site 是浏览器自动设置的、不可伪造的头
+  const secFetchSite = req.headers.get("sec-fetch-site");
+  if (secFetchSite === "same-origin") {
+    return true;
+  }
+
+  // 回退：检查 Origin 或 Referer 是否与 Host 匹配
+  const host = req.headers.get("host");
+  if (!host) return false;
+
+  const origin = req.headers.get("origin");
+  if (origin) {
+    try {
+      const originHost = new URL(origin).host;
+      return originHost === host;
+    } catch {
+      return false;
+    }
+  }
+
+  const referer = req.headers.get("referer");
+  if (referer) {
+    try {
+      const refererHost = new URL(referer).host;
+      return refererHost === host;
+    } catch {
+      return false;
+    }
+  }
+
+  return false;
 }
 
 /**

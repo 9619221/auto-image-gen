@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   let plans: ImagePlan[];
   try {
     const formData = await req.formData();
-    const validation = validateUploadedFiles(formData);
+    const validation = await validateUploadedFiles(formData);
     if (!validation.ok) {
       return NextResponse.json({ error: validation.error }, { status: 400 });
     }

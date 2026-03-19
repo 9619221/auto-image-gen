@@ -3,15 +3,17 @@ import { generateProductImage } from "@/lib/image-gen";
 import { validatePlan } from "@/lib/generation-guard";
 import { filesToDataUrls } from "@/lib/server-image";
 import { validateUploadedFiles } from "@/lib/validate-upload";
-import { authenticateRequest } from "@/lib/api-auth";
+import { authenticateRequest, checkRateLimit } from "@/lib/api-auth";
 import type { ImagePlan, AnalysisLanguage } from "@/lib/types";
 
 export async function POST(req: NextRequest) {
   const authError = authenticateRequest(req);
   if (authError) return authError;
+  const rateLimitError = checkRateLimit(req, "regenerate");
+  if (rateLimitError) return rateLimitError;
 
   const formData = await req.formData();
-  const validation = validateUploadedFiles(formData);
+  const validation = await validateUploadedFiles(formData);
   if (!validation.ok) {
     return NextResponse.json({ error: validation.error }, { status: 400 });
   }

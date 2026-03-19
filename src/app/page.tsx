@@ -53,6 +53,17 @@ export default function Home() {
   const [historyList, setHistoryList] = useState<HistoryMeta[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
+  // Cleanup blob URLs on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      originalImages.forEach((item) => {
+        if (item.previewUrl.startsWith("blob:")) {
+          URL.revokeObjectURL(item.previewUrl);
+        }
+      });
+    };
+  }, [originalImages]);
+
   const appendImagesToFormData = (formData: FormData, images: UploadImageItem[]) => {
     images.forEach((item) => {
       formData.append("images", item.file, item.file.name);
@@ -334,7 +345,7 @@ export default function Home() {
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] overflow-hidden">
             <div className="flex items-center justify-between p-6 border-b border-slate-200">
               <h2 className="text-lg font-bold text-slate-900">生成历史</h2>
-              <button onClick={() => setShowHistory(false)} className="p-1 hover:bg-slate-100 rounded-lg">
+              <button onClick={() => setShowHistory(false)} className="p-1 hover:bg-slate-100 rounded-lg" aria-label="关闭历史记录">
                 <X className="w-5 h-5 text-slate-400" />
               </button>
             </div>
