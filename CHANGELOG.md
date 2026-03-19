@@ -2,6 +2,25 @@
 
 ---
 
+## 2026-03-19 — 图片质量全面优化（标签清晰度+裁切+场景+角度+色差+误匹配）
+
+### 改了什么
+- **产品标签文字清晰度** — 新增 PRODUCT LABEL TEXT 规则，要求品牌名/产品名保持可读和清晰
+- **裁切/构图修复** — 新增 FRAMING & CROPPING 规则，要求产品完整可见，四边至少 5% 留白，产品填充 60-80%
+- **美妆场景强化** — 明确禁止办公场景（laptop、keyboard、desk、notebook 等 12 个关键词），确保美妆只出现在梳妆台/咖啡馆/晚宴等场景
+- **拍摄角度多样化** — closeup 从 3 种增加到 5 种（新增低角度英雄照、俯拍平铺），packaging 从固定角度改为 5 种随机
+- **色差强化** — 颜色规则从 8 条增到 12 条，新增禁止暖光/冷光改变产品色、nude/beige 精确匹配
+- **"Calming Energy" 误匹配修复** — heal/chakra 规则加美妆排除条件，美妆不再匹配到冥想文案
+- **美妆/花卉品类 fallback** — 指甲油 fallback 改为 Quick Dry / Chip-Resistant / Vivid Color / Smooth
+
+### 思路
+用户反馈 4 个问题：(1)产品标签文字模糊变形 (2)产品被裁切到画面外 (3)美妆生成了办公桌场景 (4)closeup 和 packaging 角度太单一。标签模糊是 AI 文字渲染的固有限制，但可以通过 prompt 引导缓解。裁切问题通过强制 5% padding 和 60-80% 填充率解决。美妆场景通过显式 ban 12 个办公关键词解决。角度通过扩展随机池解决。
+
+### 修改文件
+- `src/lib/prompt-templates.ts` — productIdentityRule 扩展、美妆场景 ban list、closeupStyles 扩展、packaging 角度随机化、colorAccuracyRule 强化、getCategoryFallbacks 新增美妆/花卉、heal 规则排除美妆
+
+---
+
 ## 2026-03-19 — 新增美妆/家居/电子品类文案系统
 
 ### 改了什么

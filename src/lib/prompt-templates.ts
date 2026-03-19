@@ -102,7 +102,7 @@ const BENEFIT_MAP: BenefitMatch[] = [
     painPoint: "Mesmerizing Glow", benefit: "Unique Cat-Eye Effect", badge: "Cat-Eye" },
   { pattern: /hand.?made|handcraft|手工|artisan/i,
     painPoint: "Crafted With Care", benefit: "Handcrafted Quality", badge: "Handmade" },
-  { pattern: /heal|chakra|energy|spiritual|meditation|瑜伽|冥想/i,
+  { pattern: /(?:heal|chakra|spiritual|meditation|瑜伽|冥想)(?!.*(?:nail|polish|lipstick|mascara|makeup|cosmetic|甲油|口红))/i,
     painPoint: "Find Your Balance", benefit: "Calming Energy", badge: "Calming" },
   { pattern: /elastic|stretch|弹力|松紧/i,
     painPoint: "One Size Fits All", benefit: "Stretchy Elastic Band", badge: "Adjustable" },
@@ -358,6 +358,25 @@ function getCategoryFallbacks(category: string, productName: string, materials: 
     ];
   }
 
+  // Beauty / Cosmetics / Nail
+  if (/nail.?polish|nail.?lacquer|lipstick|mascara|makeup|cosmetic|beauty|eyeshadow|foundation|skincare|甲油|指甲油|口红|化妆|美妆|护肤/.test(ctx)) {
+    return [
+      { pattern: /^$/, painPoint: "No More Waiting", benefit: "Quick Dry Formula", badge: "Quick Dry" },
+      { pattern: /^$/, painPoint: "Color That Lasts", benefit: "Chip-Resistant Finish", badge: "Long Wear" },
+      { pattern: /^$/, painPoint: "Salon-Quality Color", benefit: "Rich Pigment Formula", badge: "Vivid Color" },
+      { pattern: /^$/, painPoint: "Smooth Application", benefit: "Even Coverage", badge: "Smooth" },
+    ];
+  }
+
+  // Home Décor / Flowers
+  if (/flower|floral|artificial|faux|bouquet|decor|decorat|花|仿真|装饰/.test(ctx)) {
+    return [
+      { pattern: /^$/, painPoint: "Always in Bloom", benefit: "Lifelike Design", badge: "Lifelike" },
+      { pattern: /^$/, painPoint: "Easy to Arrange", benefit: "Ready to Display", badge: "Ready-Made" },
+      { pattern: /^$/, painPoint: "Thoughtful Gift", benefit: "Gift-Ready", badge: "Gift Idea" },
+    ];
+  }
+
   // Pet products
   if (/pet|dog|cat|puppy|kitten|宠物|猫|狗/.test(ctx)) {
     return [
@@ -548,10 +567,11 @@ function getCategorySceneGuide(category: string, productName: string): string {
 - USE THIS SPECIFIC SCENE: ${chosenScene}
 - Show the product being USED or the RESULT of using it (e.g., painted nails, applied makeup)
 - Background: glamorous but approachable, warm tones, soft lighting
-- Do NOT use: office/work scenes, gym, kitchen, industrial settings
-- Do NOT use: construction/hardware language in any text overlays
-- The model should look confident, stylish, and beautiful
+- 🚫 BANNED SCENES (do NOT use ANY of these): office, desk, laptop, computer, keyboard, work setting, gym, kitchen, warehouse, factory, construction site, industrial
+- 🚫 BANNED PROPS: laptop, keyboard, mouse, notebook/planner, pen, office supplies, exercise equipment
+- The model should look confident, stylish, and beautiful — NOT working or exercising
 - For nail polish: focus on the NAILS — show painted nails prominently with the bottle nearby
+- The model's hands should be the star — holding the bottle, displaying nails, or applying polish
 `;
   }
 
@@ -652,9 +672,11 @@ const mainLighting = [
 ];
 
 const closeupStyles = [
-  "Use a cropped inset panel to show one meaningful detail up close",
-  "Split the image: full product on the left, macro detail on the right",
-  "Use shallow depth-of-field to draw the eye to one premium component",
+  "Use a cropped inset panel to show one meaningful detail up close — shoot from a 45-degree angle",
+  "Split the image: full product on the left, macro detail on the right — use a top-down perspective for the detail",
+  "Use shallow depth-of-field to draw the eye to one premium component — shoot at eye level",
+  "Hero product shot from a low angle with one detail callout in the corner",
+  "Overhead/flat-lay style with the product and one zoomed-in detail circle",
 ];
 
 const closeupBackgrounds = [
@@ -719,6 +741,17 @@ export function generatePlans(
 🔒 PRODUCT IDENTITY RULE:
 - This is a real retail product, not an abstract decor object
 - Preserve the original product purpose, structure, and practical identity
+- PRODUCT LABEL TEXT: If the product has text/labels on it, keep them READABLE and SHARP
+  - Brand name, product name, and key info should be legible (not blurry or warped)
+  - If you cannot render text accurately, make it small/subtle rather than large and wrong
+  - The label text orientation must match the product surface (curved on bottles, flat on boxes)
+
+📐 FRAMING & CROPPING — CRITICAL:
+- The ENTIRE product must be visible within the image — do NOT crop or cut off any part
+- Leave at least 5% padding on all sides between the product edge and image border
+- The product should fill 60-80% of the image area (not too small, not cropped)
+- For images with text overlays: ensure the text does NOT cover the product's key features
+- For multi-panel layouts: each panel must show the COMPLETE product, not partial views
 `;
 
   const structureLockRule = `
@@ -793,14 +826,18 @@ If the provided headline or badge text contains any prohibited word, SKIP that t
 
   // 产品颜色还原规则 — 基于分析结果中的颜色信息
   const colorAccuracyRule = (colors: string) => colors ? `
-🎨 COLOR ACCURACY — CRITICAL:
-- The product color MUST match the reference photos EXACTLY
+🎨 COLOR ACCURACY — CRITICAL (HIGHEST PRIORITY):
+- The product color MUST match the reference photos EXACTLY — this is the #1 rule
 - Product colors from analysis: ${colors}
-- Do NOT shift, brighten, desaturate, or alter the product color
+- Do NOT shift, brighten, desaturate, warm up, cool down, or alter the product color in ANY way
 - If the reference shows deep blue, generate deep blue — not light blue or teal
 - If the reference shows red/crimson, generate red/crimson — not orange or pink
-- Color accuracy is MORE important than artistic style
-- Background and lighting should NOT wash out or shift the product color
+- If the reference shows nude/beige, generate the EXACT same nude/beige tone — not lighter or darker
+- Color accuracy is MORE important than artistic style or lighting mood
+- Background and lighting should complement the product WITHOUT washing out or shifting its color
+- Use neutral or complementary backgrounds that do NOT color-cast onto the product
+- In lifestyle scenes: ensure the product retains its EXACT color even with warm/cool ambient lighting
+- NEVER let scene lighting change the perceived product color (e.g., warm light making blue look green)
 ` : "";
 
   // 模特多样性规则
@@ -936,6 +973,11 @@ CONCEPT:
 - Show the quality difference the customer can FEEL through the image
 - The headline states a clear BENEFIT, not just a feature name
 - Close-up detail proves the quality claim visually
+- For BEAUTY/COSMETICS products (nail polish, lipstick, etc.): show the RESULT of using the product
+  - Show beautifully painted nails, smooth application, rich color payoff
+  - Do NOT show "before" images with damaged/dirty/chipped nails
+  - Do NOT show ugly/negative imagery — only show the POSITIVE result
+  - If comparing, show ONLY two positive results (e.g., shimmer vs matte), never negative examples
 
 🚫 NO FICTIONAL PROPS:
 - Do NOT add magnifying glasses, rulers, hands pointing, arrows, or any props not in the reference
@@ -1072,8 +1114,8 @@ GOAL:
 - Make the customer feel they're getting MORE for their money
 
 LAYOUT:
-- Elegant top-down or structured display
-- Product as visual hero
+- ${pickRandom(["Elegant top-down flat-lay with ingredients/materials around the product", "3/4 angle hero shot on a premium surface with soft shadow", "Eye-level studio shot with a clean gradient background", "Overhead arrangement showing the product with its key components laid out neatly", "Dynamic low-angle shot making the product look impressive and premium"])}
+- Product as visual hero — COMPLETE and UNCUT, fully visible
 - Clean premium spacing
 
 TEXT RULES:
