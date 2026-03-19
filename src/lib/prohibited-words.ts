@@ -42,7 +42,7 @@ const PROHIBITED_ENTRIES: ProhibitedEntry[] = [
   { pattern: /\bmarket\s*leader\b/gi, replacement: "", reason: "虚假排名声明" },
 
   // === 医疗/健康声明 ===
-  { pattern: /\bhealing\b/gi, replacement: "Calming", reason: "医疗声明" },
+  { pattern: /\bhealing\b/gi, replacement: "Soothing", reason: "医疗声明" },
   { pattern: /\bcures?\b/gi, replacement: "", reason: "医疗声明" },
   { pattern: /\btreats?\s+(disease|illness|condition)/gi, replacement: "", reason: "医疗声明" },
   { pattern: /\btherapeutic\b/gi, replacement: "Soothing", reason: "医疗声明" },

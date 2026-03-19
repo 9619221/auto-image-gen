@@ -37,12 +37,13 @@ Return ONLY valid JSON with this structure:
   "category": "中文类目 (English Category)",
   "sellingPoints": ["中文卖点1 (English SP1)", "中文卖点2 (English SP2)", "中文卖点3 (English SP3)"],
   "materials": "中文材质 (English Material)",
-  "colors": "中文颜色 (English Color)",
+  "colors": "精确颜色描述，包含近似hex色值 (Precise color with approximate hex. e.g., '裸粉色 (Dusty Rose Pink ~#D4A0A0), 玫瑰金瓶盖 (Rose Gold Cap ~#B76E79)')",
   "targetAudience": ["中文人群1 (English Audience 1)", "中文人群2 (English Audience 2)", "中文人群3 (English Audience 3)"],
   "usageScenes": ["中文场景1 (English Scene 1)", "中文场景2 (English Scene 2)", "中文场景3 (English Scene 3)"],
   "estimatedDimensions": "尺寸 (e.g., 30 x 20 x 15 cm / 11.8 x 7.9 x 5.9 in)",
 }
 
+Colors: Describe the PRECISE product colors with approximate hex values. Include all distinct color zones (body color, cap/lid color, accent colors). This is CRITICAL — these colors will be used to ensure color consistency across 8 generated listing images.
 Selling Points: Extract 3-5 core features, advantages, and unique selling points.
 Target Audience: Identify 3 different buyer personas.
 Usage Scenes: Describe 5 diverse, specific, vivid real-world usage scenarios (e.g., "忙碌的上班族下班回家后在玄关桌上整理钥匙和钱包 (A busy professional organizing keys and wallet on the entryway table after coming home)").`;

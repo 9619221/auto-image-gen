@@ -1,5 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
+import { detectImageMime } from "./server-image";
 
 const HISTORY_DIR = path.join(process.cwd(), "data", "history");
 const MAX_HISTORY = 50; // Keep last 50 generations
@@ -119,7 +120,7 @@ export async function getHistoryEntry(id: string): Promise<HistoryEntry | null> 
       const imgPath = path.join(entryDir, ref.filename);
       try {
         const imgBuf = await fs.readFile(imgPath);
-        const mime = ref.mime || (ref.filename.endsWith(".jpg") ? "image/jpeg" : "image/png");
+        const mime = detectImageMime(imgBuf);
         images.push({
           imageType: ref.imageType,
           imageUrl: `data:${mime};base64,${imgBuf.toString("base64")}`,
