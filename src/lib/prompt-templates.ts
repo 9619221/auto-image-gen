@@ -115,6 +115,10 @@ const BENEFIT_MAP: BenefitMatch[] = [
     painPoint: "For Him & Her", benefit: "Unisex Style", badge: "Unisex" },
 
   // === Beauty / Cosmetics / Nail / Skincare ===
+  { pattern: /nail.?hardener|hardener.?nail|nail.?strengthen|强化甲|硬甲/i,
+    painPoint: "Weak, Brittle Nails?", benefit: "Nail-Strengthening Formula", badge: "Nail Armor" },
+  { pattern: /color.?strong|strong.?color|显色/i,
+    painPoint: "Color That Pops", benefit: "Vivid Color Payoff", badge: "Vivid Color" },
   { pattern: /nail.?polish|nail.?lacquer|甲油|指甲油/i,
     painPoint: "Tired of Dull, Streaky Polish?", benefit: "Rich Pigment Formula", badge: "True Color" },
   { pattern: /quick.?dry|fast.?dry|速干/i,
@@ -142,7 +146,7 @@ const BENEFIT_MAP: BenefitMatch[] = [
   { pattern: /makeup|cosmetic|beauty|化妆|美妆/i,
     painPoint: "Makeup That Works as Hard as You", benefit: "Pro-Level Results", badge: "Pro Finish" },
   { pattern: /brush|applicator|刷子|化妆刷/i,
-    painPoint: "Streaky Application?", benefit: "Flawless Every Stroke", badge: "Soft Touch" },
+    painPoint: "Streaky Application?", benefit: "Smooth Every Stroke", badge: "Soft Touch" },
 
   // === Home Décor / Flowers / Plants ===
   { pattern: /artificial|faux|fake|silk.?flower|仿真|假花|绢花/i,
@@ -289,6 +293,8 @@ function badgeToOpposite(badge: string): string {
     "Ambient": "No Ambiance",
     "Display": "Flimsy Frame",
     "Plush": "Flat & Thin",
+    // Nail / Beauty specific
+    "Nail Armor": "Weak & Brittle",
     // Jewelry
     "Calming": "No Character",
     "Cat-Eye": "Plain Stone",
@@ -316,6 +322,45 @@ function matchBenefit(text: string): BenefitMatch | null {
 
 // ===== Strategy Engine =====
 
+/**
+ * 判断是否为小型产品（最长边 < 15cm）
+ * 通过尺寸文字解析 + 类目关键词辅助判断
+ */
+function detectSmallProduct(dimensions: string, category: string, productName: string): boolean {
+  // 类目关键词直接判定为小产品（覆盖全品类常见小件）
+  const ctx = `${category} ${productName}`.toLowerCase();
+  if (/nail.?polish|lipstick|mascara|eyeshadow|perfume|serum|lip.?gloss|concealer|eyeliner|blush|compact|甲油|口红|睫毛膏|眼影|香水|精华|唇彩|遮瑕|眼线|腮红/.test(ctx)) return true; // 美妆
+  if (/earring|ring|pendant|charm|necklace|bracelet|brooch|pin|badge|cufflink|耳环|戒指|吊坠|项链|手链|胸针|徽章|袖扣/.test(ctx)) return true; // 首饰
+  if (/keychain|key.?ring|lighter|usb|flash.?drive|sd.?card|memory.?card|钥匙扣|打火机|U盘|SD卡/.test(ctx)) return true; // 小配件
+  if (/pill.?box|vitamin|capsule|tablet|药盒|维生素|胶囊/.test(ctx)) return true; // 健康小件
+  if (/button|buckle|zipper|sewing|thimble|needle|纽扣|扣子|拉链|缝纫|顶针|针/.test(ctx)) return true; // 缝纫配件
+  if (/coin|dice|chess.?piece|figurine|miniature|硬币|骰子|棋子|手办|微缩/.test(ctx)) return true; // 收藏小件
+  if (/eraser|sharpener|clip|paper.?clip|staple|橡皮|卷笔刀|回形针|订书钉/.test(ctx)) return true; // 文具小件
+  if (/hook|knob|handle|screw|bolt|nut|挂钩|旋钮|把手|螺丝|螺母/.test(ctx)) return true; // 五金小件
+
+  // 解析尺寸数字（支持 cm 和 in）
+  if (!dimensions) return false;
+  const cmNumbers: number[] = [];
+
+  // 匹配 "30 x 20 x 15 cm" 格式
+  const cmMatch = dimensions.match(/([\d.]+)\s*[x×]\s*([\d.]+)(?:\s*[x×]\s*([\d.]+))?\s*cm/i);
+  if (cmMatch) {
+    cmNumbers.push(parseFloat(cmMatch[1]), parseFloat(cmMatch[2]));
+    if (cmMatch[3]) cmNumbers.push(parseFloat(cmMatch[3]));
+  }
+
+  // 匹配 inch 格式并转换
+  const inMatch = dimensions.match(/([\d.]+)\s*[x×]\s*([\d.]+)(?:\s*[x×]\s*([\d.]+))?\s*in/i);
+  if (inMatch && cmNumbers.length === 0) {
+    cmNumbers.push(parseFloat(inMatch[1]) * 2.54, parseFloat(inMatch[2]) * 2.54);
+    if (inMatch[3]) cmNumbers.push(parseFloat(inMatch[3]) * 2.54);
+  }
+
+  if (cmNumbers.length === 0) return false;
+  const maxDim = Math.max(...cmNumbers);
+  return maxDim < 15; // 最长边小于15cm视为小产品
+}
+
 function inferProductStrategy(analysis: AnalysisResult) {
   const productName = toEnglish(analysis.productName);
   const category = toEnglish(analysis.category || "");
@@ -324,13 +369,20 @@ function inferProductStrategy(analysis: AnalysisResult) {
   const targetAudience = toEnglishArray(analysis.targetAudience || []);
   const materials = toEnglish(analysis.materials || "");
 
-  // Detect if this is a beauty/cosmetics product — to filter out spiritual/meditation badges
-  const isBeautyProduct = /nail.?polish|nail.?lacquer|lipstick|mascara|makeup|cosmetic|beauty|eyeshadow|foundation|skincare|甲油|指甲油|口红|化妆|美妆|护肤/.test(
+  // Detect if this is a beauty/cosmetics product — to filter out inappropriate badges
+  const isBeautyProduct = /nail.?polish|nail.?lacquer|nail.?hardener|hardener.?nail|lipstick|mascara|makeup|cosmetic|beauty|eyeshadow|foundation|skincare|甲油|指甲油|口红|化妆|美妆|护肤/.test(
     `${category} ${productName}`.toLowerCase()
   );
 
-  // Badges that should NOT appear on beauty products (spiritual/meditation context)
-  const beautyBannedBadges = new Set(["Calming", "Natural", "Kyanite", "Agate", "Crystal", "Jade", "Cat-Eye"]);
+  // Badges that should NOT appear on beauty products
+  // Includes: spiritual/gemstone, construction/durability (sounds like hardware, not beauty)
+  const beautyBannedBadges = new Set([
+    "Calming", "Natural", "Kyanite", "Agate", "Crystal", "Jade", "Cat-Eye",
+    "Extra Sturdy", "Durable", "Non-Slip", "Stackable", "Leak-Proof",
+    "Oven-Safe", "Food-Safe", "Family Size", "Waterproof", "With Lid",
+    "Aluminum", "Full Set", "Multi-Use", "Bulk Value", "Premium",
+    "Lightweight", "Great Gift", "Gift Idea", "Gift-Ready",
+  ]);
 
   // Match each selling point to a benefit
   const matched: BenefitMatch[] = [];
@@ -373,6 +425,25 @@ function inferProductStrategy(analysis: AnalysisResult) {
     }
   }
 
+  // 安全网：二次过滤美妆禁用 badge（防止通过 fallback/materials 路径漏入）
+  if (isBeautyProduct) {
+    for (let i = matched.length - 1; i >= 0; i--) {
+      if (beautyBannedBadges.has(matched[i].badge)) {
+        matched.splice(i, 1);
+      }
+    }
+    // 补充到至少3个（用美妆专用 fallback）
+    const beautyFallbacks = getCategoryFallbacks(category, productName, materials);
+    while (matched.length < 3) {
+      const fb = beautyFallbacks.find(f => !matched.some(m => m.painPoint === f.painPoint));
+      if (fb) {
+        matched.push(fb);
+      } else {
+        break;
+      }
+    }
+  }
+
   const scene1 = compactLabel(usageScenes[0] || "everyday use", 5, 32).toLowerCase();
   const scene2 = compactLabel(usageScenes[1] || usageScenes[0] || "home use", 5, 32).toLowerCase();
   const audience1 = compactLabel(targetAudience[0] || "everyday users", 3, 24);
@@ -385,7 +456,11 @@ function inferProductStrategy(analysis: AnalysisResult) {
   // Function image: headline = key benefit, badges = supporting features
   const functionHeadline = matched[1].benefit;
   const functionBadge1 = matched[0].badge;
-  const functionBadge2 = matched[2].badge;
+  // Avoid duplicating badges already used in pain-point
+  const functionBadge2Raw = matched[2].badge;
+  const functionBadge2 = (functionBadge2Raw.toLowerCase() === painPointBadge1.toLowerCase() || functionBadge2Raw.toLowerCase() === painPointBadge2.toLowerCase())
+    ? (matched.length > 3 ? matched[3].badge : matched[0].benefit)
+    : functionBadge2Raw;
 
   // Lifestyle: result headline from scene context
   const resultHeadline = deriveResultHeadline(scene1, audience1, category, materials);
@@ -394,11 +469,19 @@ function inferProductStrategy(analysis: AnalysisResult) {
   const valueHeadline = deriveValueHeadline(category, productName, materials);
 
   // A+ labels: 3 distinct buying reasons (benefit phrases)
-  const aPlusLabels = uniqueLabels([
-    matched[0].benefit,
-    matched[1].benefit,
-    matched[2].benefit,
-  ]).slice(0, 3);
+  const aPlusLabelsRaw = uniqueLabels(
+    matched.map(m => m.benefit)
+  ).slice(0, 3);
+  // Ensure we always have 3 labels — pad with badge text if needed
+  while (aPlusLabelsRaw.length < 3) {
+    const extra = matched.find(m => !aPlusLabelsRaw.map(l => l.toLowerCase()).includes(m.badge.toLowerCase()));
+    if (extra) {
+      aPlusLabelsRaw.push(extra.badge);
+    } else {
+      break;
+    }
+  }
+  const aPlusLabels = aPlusLabelsRaw;
 
   // Comparison badges: top 3 unique badges for ours-vs-theirs
   const comparisonBadges = uniqueLabels([
@@ -434,6 +517,9 @@ function inferProductStrategy(analysis: AnalysisResult) {
     scene1,
     scene2,
     audience1,
+    isBeautyProduct,
+    isNailPolish: /nail.?polish|nail.?lacquer|nail.?hardener|hardener.?nail|甲油|指甲油/.test(`${category} ${productName}`.toLowerCase()),
+    isSmallProduct: detectSmallProduct(analysis.estimatedDimensions || "", category, productName),
   };
 }
 
@@ -781,12 +867,27 @@ const mainLighting = [
   "Dramatic studio lighting with one key light creating elegant shadow play",
 ];
 
+const beautyMainLighting = [
+  "Soft beauty lighting with a large key light at 45° and fill card opposite — even, shadow-free illumination that shows true product color without hot spots",
+  "Ring light style: flat, even frontal lighting that makes glossy surfaces pop with a circular catchlight — ideal for nail polish and cosmetics",
+  "Editorial beauty lighting: large softbox overhead with a subtle kick from below to illuminate labels and show product shape, gentle rim light for separation",
+  "Window-light simulation: soft directional light from one side with a reflector fill — creates gentle dimension while keeping colors accurate and labels readable",
+];
+
 const closeupStyles = [
   "Use a cropped inset panel to show one meaningful detail up close — shoot from a 45-degree angle",
   "Split the image: full product on the left, macro detail on the right — use a top-down perspective for the detail",
   "Use shallow depth-of-field to draw the eye to one premium component — shoot at eye level",
   "Hero product shot from a low angle with one detail callout in the corner",
   "Overhead/flat-lay style with the product and one zoomed-in detail circle",
+];
+
+const beautyCloseupStyles = [
+  "Split frame: product bottle on left, macro close-up of perfectly polished nails on right — show color depth and glossy reflection under directional light",
+  "Main shot: a hand with stunning polished nails at 30° angle catching light, product bottle placed just behind — shallow DOF highlights the nail surface texture",
+  "Color showcase: three lighting angles showing the same polished nail — direct light, side light, and backlight — to reveal color shift, depth, and dimension. Product bottle centered below",
+  "Macro hero: extreme close-up of two nails filling 60% of frame, showing wet-gloss finish, perfect cuticle line, and smooth even coverage. Product bottle in soft-focus background",
+  "Swatch comparison: product bottle center, with small color swatch circles around it showing the color on different skin tones (light, medium, warm) — proves universal flattery",
 ];
 
 const closeupBackgrounds = [
@@ -852,8 +953,11 @@ export function generatePlans(
 🔒 PRODUCT IDENTITY RULE:
 - This is a real retail product, not an abstract decor object
 - Preserve the original product purpose, structure, and practical identity
-- PRODUCT LABEL TEXT: If the product has text/labels on it, keep them READABLE and SHARP
-  - Brand name, product name, and key info should be legible (not blurry or warped)
+- PRODUCT LABEL TEXT — CRITICAL:
+  - Brand name, product name, and key info MUST be LETTER-PERFECT — spell each character exactly as shown in the reference
+  - Before rendering ANY label text, spell it out character by character and verify against the reference photo
+  - Common AI error: truncating or altering the last 1-2 characters of brand names (e.g., "XLIXTC" becoming "XLIXTO") — CHECK EVERY LETTER
+  - If the brand name has unusual letter combinations, be EXTRA careful to reproduce them exactly
   - If you cannot render text accurately, make it small/subtle rather than large and wrong
   - The label text orientation must match the product surface (curved on bottles, flat on boxes)
 
@@ -869,6 +973,15 @@ export function generatePlans(
 🔒 STRUCTURE LOCK RULE:
 - Keep the exact outer silhouette, slots, openings, compartments from the reference
 - Do not add, remove, or redesign any structural parts
+
+🚨 BOTTLE/CONTAINER SHAPE — ZERO TOLERANCE:
+- If the reference shows a SQUARE bottle, generate a SQUARE bottle — NOT round, NOT cylindrical
+- If the reference shows a ROUND bottle, generate a ROUND bottle — NOT square
+- The bottle cross-section shape is LOCKED: square stays square, round stays round, oval stays oval
+- CAP/LID must match the reference EXACTLY: same shape (dome, flat, tapered), same color, same finish (matte, glossy, metallic)
+- Do NOT change cap color from rose gold to yellow gold, or from gold to silver, etc.
+- The bottle-to-cap proportion must remain the same as in the reference
+- CHECK: Before finalizing, compare your generated bottle silhouette against the reference — if the shape differs, REGENERATE
 `;
 
   // Sanitize analysis fields to prevent prompt injection via user-edited data
@@ -955,11 +1068,20 @@ If the provided headline or badge text contains any prohibited word, SKIP that t
 - Count BEFORE rendering: thumb (short, thick) + index + middle + ring + pinky = 5. NEVER 4. NEVER 6.
 - If you cannot guarantee correct finger count, DO NOT show hands at all — crop them out or use a wider angle
 - For nail polish / beauty: if showing hands close-up, show ONLY 4 fingertips (curl the thumb behind) to reduce error risk
-- SAFER ALTERNATIVES when hands are risky:
-  * Show just fingertips (4 visible fingers, thumb hidden)
-  * Show from wrist-up at an angle where some fingers overlap naturally
-  * Show hands partially obscured by holding an object
-  * Use a wider shot where hand details are less critical
+
+🛡️ SAFE HAND POSES (use these to avoid deformed hands):
+- HOLDING AN OBJECT: hand wraps around a cup, glass, bottle, phone — the object hides the palm and some fingers, reducing error risk
+- FINGERTIPS ONLY: show only the tips of 4 fingers (thumb curled behind), nail-side toward camera
+- RESTING ON SURFACE: hand flat on a table/countertop, fingers relaxed and slightly apart — natural and easy to render correctly
+- SINGLE HAND ONLY: if the scene allows, show only ONE hand — two hands doubles the chance of errors
+- ⚠️ AVOID these high-risk poses: interlaced fingers, jazz hands (spread wide), pointing, making gestures, holding thin objects at odd angles
+
+📐 SMALL PANEL RULE (for multi-panel layouts):
+- In small panels (under 50% of image area), use WIDER shots where hands are smaller and detail is less critical
+- Do NOT zoom into hands in small panels — small size + high detail = more visible errors
+- Prefer showing hands holding/using the product from a medium distance
+- If the panel is too small to render hands well, show the product WITHOUT hands in that panel
+
 - Thumbs must be clearly distinct — shorter, thicker, opposable
 - Each finger: 3 segments with natural bending
 - Fingernails: exactly ONE per finger, natural shape
@@ -969,22 +1091,25 @@ If the provided headline or badge text contains any prohibited word, SKIP that t
   // 产品颜色还原规则 — 基于分析结果中的颜色信息
   const colorAccuracyRule = (colors: string) => colors ? `
 🎨 COLOR ACCURACY — CRITICAL (HIGHEST PRIORITY):
-🔒 COLOR LOCK: This product is ${colors}. Lock this EXACT color before generating. Every pixel of the product MUST match this locked color across ALL images.
+🔒 COLOR LOCK: This product is ${colors}. Lock this EXACT color before generating.
 
-- The product color MUST match the reference photos EXACTLY — this is the #1 rule above ALL artistic choices
-- Product colors: ${colors}
-- BEFORE generating: study the reference photo, identify the PRECISE hue/saturation/brightness of the product, and LOCK that value
-- Do NOT shift, brighten, desaturate, warm up, cool down, or alter the product color in ANY way
-- If the reference shows deep blue → generate deep blue (NOT light blue, teal, or navy)
-- If the reference shows red/crimson → generate red/crimson (NOT orange, pink, or maroon)
-- If the reference shows nude/beige → generate the EXACT same nude/beige tone (NOT lighter, darker, more yellow, or more pink)
-- WRONG EXAMPLES: reference=dusty rose but generated=coral/peach/salmon. reference=nude beige but generated=golden/yellow. These are FAILURES.
-- Color accuracy is MORE important than artistic style, lighting mood, or background aesthetics
-- Background and lighting MUST be neutral — do NOT let them color-cast onto the product
-- Use neutral gray, white, or complementary backgrounds that preserve the product's true color
-- In lifestyle scenes: the product RETAINS its EXACT color even under warm golden-hour or cool blue lighting
-- NEVER let scene lighting shift the perceived product color
-- This image is part of an 8-image Amazon listing set — the product color MUST be IDENTICAL across all 8 images
+STEP-BY-STEP COLOR PROTOCOL (follow in order):
+1. SAMPLE: Look at the reference photo. Identify the exact hex color of each product zone (body, cap, label, accent).
+2. LOCK: Write down the hex values mentally. These are your COLOR ANCHORS: ${colors}
+3. GENERATE: When rendering the product, use ONLY the locked hex values — do NOT let lighting, background, or artistic style shift them.
+4. VERIFY: Before finalizing, compare every product pixel against the COLOR ANCHORS. If any zone drifts by more than ~10% in hue/saturation, correct it.
+
+ANTI-COLOR-DRIFT RULES:
+- The product body color MUST be the SAME in ALL 8 images — this is an Amazon listing set, not 8 independent photos
+- Scene lighting MUST NOT tint the product. In warm scenes: product stays its true color (NOT warmer). In cool scenes: product stays its true color (NOT cooler).
+- TECHNIQUE: Mentally apply white-balance correction to the product region — as if the product is lit by pure daylight (D65 / 6500K) regardless of scene lighting
+- COMMON FAILURES to AVOID:
+  * Nude/beige product turning golden/yellow under warm lighting
+  * Light-colored product becoming washed out or too bright on white backgrounds
+  * Product color shifting darker in moody/editorial lighting
+  * ⚠️ Cap/lid metallic color changing from rose gold to yellow gold or silver — THIS IS A CRITICAL FAILURE
+- CAP/LID COLOR LOCK: The cap/lid color is part of the product identity. If the reference shows a ROSE GOLD cap, it must stay ROSE GOLD in every image. Yellow gold ≠ rose gold. Silver ≠ chrome. Match the EXACT metallic tone.
+- Background and lighting choices are SECONDARY to color accuracy — if a scene's lighting would shift the product color, change the lighting, NOT the product color
 ` : "";
 
   // 模特多样性规则
@@ -995,6 +1120,64 @@ If the provided headline or badge text contains any prohibited word, SKIP that t
 - Pick a model ethnicity that feels natural for the product and target market
 - All models should look natural, confident, and relatable
 `;
+
+  // 减少售后退货：图片必须真实反映产品，避免过度美化导致期望落差
+  const realisticExpectationRule = `
+📦 REALISTIC PRODUCT REPRESENTATION (REDUCES RETURNS):
+- Show the product's TRUE size, proportions, and appearance — do NOT exaggerate or idealize
+- The product color, texture, and finish in the image must match what the customer will receive
+- Do NOT add items that are NOT included in the package (e.g., showing flowers in a vase when only the vase is sold)
+- Do NOT show the product in an unrealistic scale — if it's small, show it next to a common reference object (hand, coin, phone) so the customer knows the real size
+- Material appearance must be honest: if it's plastic, don't make it look like glass; if it's faux leather, don't make it look like genuine leather
+- For beauty products: show realistic application results, not impossible perfection — nails should look salon-quality but humanly achievable
+- The goal: when the customer receives the product, they should think "this looks exactly like the listing photos"
+`;
+
+  // 小产品"手入镜"规则 — 按图片类型决定是否需要手
+  // lifestyle: 必须有手（使用场景天然需要手）
+  // dimensions: 需要手做参照物
+  // closeup: 看产品类型 — 首饰/美妆需要手展示效果，五金/文具不需要
+  // packaging/value: 可选，有手更好但不强制
+  // comparison/features/aplus: 不需要手
+  function getHandInFrameRule(imgType: string): string {
+    if (!strategy.isSmallProduct) return "";
+
+    const isWearable = /nail|lipstick|ring|earring|bracelet|necklace|pendant|watch|甲油|口红|戒指|耳环|手链|项链|手表/.test(
+      `${strategy.category} ${strategy.productName}`.toLowerCase()
+    );
+
+    switch (imgType) {
+      case "lifestyle":
+        return `
+🤚 SMALL PRODUCT — HAND REQUIRED:
+This product is SMALL. Show a human hand naturally HOLDING or USING the product in this scene.
+- The hand provides intuitive size reference — the customer instantly understands the real size
+- Hand pose should be natural and match the scene (holding, using, picking up)
+- Do NOT make the product appear larger than reality
+`;
+      case "dimensions":
+        return `
+🤚 SMALL PRODUCT — SIZE REFERENCE:
+This product is SMALL. Include a hand or common object (coin, pen) next to the product for scale.
+- The customer MUST understand the real size before purchasing — this prevents returns
+`;
+      case "closeup":
+        return isWearable ? `
+🤚 SMALL PRODUCT — SHOW IN USE:
+This is a small wearable/beauty product. Show it being WORN or APPLIED — the hand/body is part of demonstrating the product's effect.
+- For jewelry: show it on a finger, wrist, ear, or neck
+- For beauty: show the result on skin, nails, or lips
+- The hand/body naturally provides a size reference
+` : "";
+      case "packaging":
+        return `
+🤚 SMALL PRODUCT — OPTIONAL HAND:
+This product is small. If it fits the composition, showing a hand holding or placing the product adds a natural size reference. Not mandatory but recommended.
+`;
+      default:
+        return "";
+    }
+  }
 
   // 动态规则实例化
   const colorRule = colorAccuracyRule(sanitizedAnalysis.colors || "");
@@ -1026,6 +1209,7 @@ ${structureLockRule}
 🔒 Show ONLY ONE product. Match the reference exactly in shape, color, material, finish, and proportions.
 ${colorRule}
 
+${realisticExpectationRule}
 🚨 HERO IMAGE — CRITICAL RULES:
 - Show the product in its FULLY ASSEMBLED, ready-to-use state
 - Do NOT show disassembled parts, screws, accessories, or components laid out separately
@@ -1037,8 +1221,14 @@ COMPOSITION:
 - Pure white background (#FFFFFF)
 - Center the product with elegant whitespace
 - Product should fill approximately 85% of the frame
-- ${pickRandom(mainAngles)}
-- ${pickRandom(mainLighting)}
+${strategy.isNailPolish ? `- ${pickRandom([
+  "Bottle at a slight 10-15 degree tilt, cap REMOVED and resting beside the bottle base, brush pulled halfway out showing loaded bristles with polish matching the bottle color",
+  "Bottle standing upright, cap lifted off and leaning against the bottle at an angle, brush tip visible with a thin strand of polish — dynamic and eye-catching",
+  "Eye-level shot with bottle cap elegantly placed beside the base, brush pulled out showing the applicator — a small polish swatch dot on the white surface near the bottle base to show the actual color",
+])}
+- The open-cap pose creates visual interest vs competitors' static closed bottles
+- The brush and any polish swatch MUST match the bottle color exactly` : `- ${pickRandom(mainAngles)}`}
+- ${strategy.isBeautyProduct ? pickRandom(beautyMainLighting) : pickRandom(mainLighting)}
 - Add a subtle, soft shadow beneath the product for grounding (not floating)
 
 RULES:
@@ -1055,12 +1245,15 @@ STYLE:
 - The product should look solid, substantial, and desirable`,
         };
 
-      case "features":
+      case "features": {
+        const featureBadges = uniqueLabels([strategy.painPointBadge1, strategy.painPointBadge2, strategy.functionBadge1, strategy.functionBadge2]);
+        const badgeCount = Math.min(featureBadges.length, 2 + Math.floor(Math.random() * 3)); // 随机 2-4 个
+        const selectedBadges = featureBadges.slice(0, badgeCount);
         return {
           imageType,
           title: "Pain-point / benefit image",
           description: `${productName} — addresses customer pain point and shows the product as the solution.`,
-          validationNotes: ["headline is a question or problem statement", "max 2 badges", "single product only"],
+          validationNotes: ["headline is a question or problem statement", `${badgeCount} badges`, "single product only"],
           prompt: `Create a PAIN-POINT image for ${productName} that makes the customer think "I need this!"
 
 ⚠️ ${langRule}
@@ -1087,32 +1280,43 @@ VISUAL STORYTELLING:
 - Clean background, product as focal point
 - Strong whitespace, premium feel
 - The image should trigger an EMOTIONAL response: "Yes, that's MY problem — and this fixes it!"
-${/nail.?polish|nail.?lacquer|lipstick|mascara|foundation|eyeshadow|makeup|cosmetic|beauty|甲油|口红|化妆|美妆/.test(strategy.category + " " + strategy.productName) ? `
-🎨 BEAUTY-SPECIFIC VISUAL (CRITICAL):
-- SPLIT COMPOSITION: Left side shows a hand with clean, bare/natural nails (plain but NOT ugly or damaged).
-  Right side shows the SAME hand with gorgeously polished nails using this product.
-- ⚠️ The polished nails on the "after" side MUST be the EXACT SAME COLOR as the product in the bottle (refer to COLOR LOCK)
+${/nail.?polish|nail.?lacquer|nail.?hardener|hardener.?nail|lipstick|mascara|foundation|eyeshadow|makeup|cosmetic|beauty|甲油|口红|化妆|美妆/.test(strategy.category + " " + strategy.productName) ? `
+🎨 BEAUTY-SPECIFIC VISUAL — MANDATORY LAYOUT:
+- 🚨 POLISHED NAILS MUST fill at least 50% of the image area — they are the #1 element, NOT the bottle
+- MANDATORY COMPOSITION: Close-up of 4 beautifully polished fingertips (thumb curled behind) fills the left/center of the image. The bottle is visible but SMALLER, positioned to the side.
+- Camera angle: slightly overhead looking down at the hand, nails tilted toward camera to catch glossy reflections
+- The polished nails MUST be the EXACT SAME COLOR as the product in the bottle (refer to COLOR LOCK)
 - Do NOT use a different nail color (no dark brown, no red, no pink if the product is nude/beige)
-- The "after" side must be ASPIRATIONAL: glossy, even, salon-quality finish that makes viewers want the same look
-- The product bottle appears between the two sides as the visual "bridge" / solution
-- The bare side should look neutral and clean — the polished side should look STUNNING in the product's EXACT color
+- NAIL BEAUTY CHECKLIST (verify ALL before finalizing):
+  ✓ Are polished nails the LARGEST element in the frame? (must be yes)
+  ✓ Does the nail color match the bottle exactly? (must be yes)
+  ✓ Are there light reflections showing wet-gloss depth? (must be yes)
+  ✓ Is the bottle visible but secondary? (must be yes)
+  ✓ Do the nails look salon-quality: smooth, even, no streaks? (must be yes)
+- If the image shows ONLY the bottle with no polished nails visible, the image is REJECTED — REGENERATE
 - Light should catch the polish to show depth, dimension, and wet-gloss shine
-- This before→after transformation is the #1 conversion driver for beauty products
+- 🚫🚫🚫 ABSOLUTE BAN — ZERO EXCEPTIONS:
+  - Do NOT show damaged, chipped, dirty, yellowed, or unhealthy-looking nails ANYWHERE in the image
+  - Do NOT show "before" images with ugly/bare/unpolished nails — ONLY show the beautiful RESULT
+  - Do NOT show any negative nail imagery — this is a PREMIUM product, every nail shown must look STUNNING
+  - If showing a comparison, show TWO polished states (e.g., matte vs glossy), NEVER polished vs unpolished
+  - ⚠️ IMPORTANT: The headline text may mention a PROBLEM (e.g., "Weak, Brittle Nails?") — this is the HEADLINE TEXT ONLY
+    The VISUAL must show the SOLUTION, not the problem! Show ONLY gorgeous, strong, perfectly polished nails.
+    The text asks the question → the image shows the answer. NEVER illustrate the problem visually.
+- The image should make the viewer think: "I NEED my nails to look like that"
 ` : ""}
 
 TEXT RULES:
 - EXACT headline text (copy verbatim, do not modify): "${strategy.painPointHeadline}"
-- EXACT badge texts (copy verbatim): "${strategy.painPointBadge1}", "${strategy.painPointBadge2}", "${strategy.functionBadge1}", "${strategy.functionBadge2}"
+- EXACT badge texts (copy verbatim): ${selectedBadges.map(b => `"${b}"`).join(", ")}
 - ⚠️ Do NOT invent, rephrase, or expand the text above. Use ONLY these exact words.
+- ⚠️ Do NOT add extra badges, icons, timelines, rulers, scales, or infographic elements beyond what is listed
 - No paragraph text, no long descriptions
 
 📋 TEXT MANIFEST (ONLY these texts appear on this image):
 1. Headline: "${strategy.painPointHeadline}"
-2. Badge: "${strategy.painPointBadge1}"
-3. Badge: "${strategy.painPointBadge2}"
-4. Badge: "${strategy.functionBadge1}"
-5. Badge: "${strategy.functionBadge2}"
-TOTAL: up to 5 text elements (1 headline + up to 4 badges). Do NOT add ANY text not listed above.
+${selectedBadges.map((b, i) => `${i + 2}. Badge: "${b}"`).join("\n")}
+TOTAL: ${1 + selectedBadges.length} text elements. Do NOT add ANY text not listed above.
 Spell each word EXACTLY as shown — letter by letter.
 
 STYLE:
@@ -1121,6 +1325,7 @@ STYLE:
 - The headline should hit like a punch — the customer immediately recognizes their problem
 - 800x800px`,
         };
+      }
 
       case "closeup":
         return {
@@ -1141,22 +1346,29 @@ ${prohibitedWordsRule}
 ${spellingRule}
 ${colorRule}
 ${humanAnatomyRule}
+${getHandInFrameRule("closeup")}
 🔒 Show ONLY ONE product. Keep the product identical to the reference.
 
+${strategy.isNailPolish ? `
+🚨 NAIL POLISH CLOSEUP — MANDATORY (THIS IS THE #1 RULE FOR THIS IMAGE):
+- The HERO SUBJECT of this image is POLISHED NAILS, not the bottle
+- Show a close-up of a hand with GORGEOUSLY POLISHED NAILS — wet-gloss, perfect cuticles, even coverage
+- The nails must fill at least 40% of the image area — they are the STAR, not a side detail
+- Place the product bottle nearby (in background or beside the hand) as a color reference
+- The nail color and the bottle color must match EXACTLY
+- Shoot at a slight angle to catch light reflection showing color depth and dimension
+- Use soft directional lighting that creates a glossy highlight streak across each nail surface
+- The nails should make viewers think: "I NEED this color on my nails RIGHT NOW"
+- Do NOT show damaged, chipped, dirty, or ugly nails — ZERO negative imagery
+- Do NOT use magnifying glass circles or detail callouts — just beautiful macro photography
+- Do NOT focus on the bottle detail (corners, threading, cap) — the RESULT matters, not the packaging
+` : `
 CONCEPT:
 - This image answers: "Why should I buy THIS one instead of the cheaper alternative?"
 - Show the quality difference the customer can FEEL through the image
-- The headline states a clear BENEFIT, not just a feature name
 - Close-up detail proves the quality claim visually
-- For BEAUTY/COSMETICS products (nail polish, lipstick, etc.): show the STUNNING RESULT of using the product
-  - NAIL POLISH: Show a CLOSE-UP of gorgeously polished nails — wet-gloss fresh, perfect cuticles, even application
-  - Shoot at a slight angle to catch light reflection showing the depth, dimension, and richness of the color
-  - Include the product bottle nearby for color reference — showing the bottle and nails match EXACTLY
-  - The nails should look so beautiful that viewers IMMEDIATELY want the same color on their own nails
-  - Use soft directional lighting that creates a highlight streak across the nail surface
-  - Do NOT show "before" images with damaged/dirty/chipped nails
-  - Do NOT show ugly/negative imagery — only show the ASPIRATIONAL result
-  - If comparing, show ONLY two positive results (e.g., shimmer vs matte), never negative examples
+`}
+- The headline states a clear BENEFIT, not just a feature name
 
 🚫 NO FICTIONAL PROPS:
 - Do NOT add magnifying glasses, rulers, hands pointing, arrows, or any props not in the reference
@@ -1169,8 +1381,8 @@ BACKGROUND:
 - Do NOT use white fur, fluffy fabric, or pet-hair-like surfaces
 
 LAYOUT:
-- ${pickRandom(closeupStyles)}
-- Zoom into the detail that proves the benefit: material thickness, reinforced edges, premium finish
+- ${strategy.isBeautyProduct ? pickRandom(beautyCloseupStyles) : pickRandom(closeupStyles)}
+- ${strategy.isBeautyProduct ? "Show the RESULT of using the product — stunning nails/skin/lips that make the viewer want the same look" : "Zoom into the detail that proves the benefit: material thickness, reinforced edges, premium finish"}
 - Use actual macro photography style — get close to the product surface
 
 TEXT RULES:
@@ -1200,6 +1412,7 @@ ${structureLockRule}
 🔒 Show ONLY ONE product. Keep the product identical to the reference.
 ${colorRule}
 ${spellingRule}
+${realisticExpectationRule}
 
 LAYOUT:
 - Minimal white or pale gray background
@@ -1208,6 +1421,12 @@ LAYOUT:
 - Maximum 4 total dimension labels
 - Thin clean measurement lines
 - Strong whitespace
+- ⚠️ CRITICAL FOR REDUCING RETURNS: Include a common reference object for scale so the customer understands the REAL size
+${strategy.isSmallProduct
+  ? `- ⚠️ THIS IS A SMALL PRODUCT — show a human hand holding or placing the product to demonstrate its compact size. The customer MUST understand it is small BEFORE purchasing.
+- Include a familiar reference object next to the product: a coin, a fingertip, or a pen cap
+- Do NOT zoom in so much that the product appears larger than reality`
+  : `- Show the product next to a familiar reference (e.g., a hand, a smartphone silhouette, a standard mug) for intuitive scale`}
 
 TEXT RULES:
 - Short labels only
@@ -1241,9 +1460,11 @@ ${strictBadgeRule}
 ${prohibitedWordsRule}
 ${spellingRule}
 🔒 Show the exact product from the reference in realistic use. Adults only.
+🔒 BOTTLE SHAPE CHECK: If the reference shows a SQUARE bottle, it MUST remain SQUARE in this scene. Do NOT round the corners or change to cylindrical. Compare your output silhouette to the reference before finalizing.
 ${colorRule}
 ${diversityRule}
 ${humanAnatomyRule}
+${getHandInFrameRule("lifestyle")}
 ${visibilityRule}
 ${sceneGuide}
 
@@ -1255,6 +1476,17 @@ SCENE:
 - The product must be clearly visible and being USED (not just sitting there)
 - Show the RESULT of using the product — the customer's life is better
 - ⚠️ The scene MUST match the product category — do NOT put fashion items in office scenes or jewelry in kitchens
+- ⚠️ COLOR PROTECTION: Even in warm/golden-hour scenes, the PRODUCT must retain its TRUE color from the reference. Apply scene warmth to the environment ONLY, not to the product. Think of it as the product having its own white-balanced spotlight.
+${strategy.isNailPolish ? `
+🎨 NAIL POLISH LIFESTYLE — NAILS ARE THE HERO:
+- The polished nails MUST be the most eye-catching element in the frame — large, in-focus, beautifully lit
+- Show a woman's hand with perfectly polished nails as the CENTRAL subject of the scene
+- The nail color MUST exactly match the product bottle color — no color drift from scene lighting
+- Nails should catch light with a glossy, wet-look reflection that makes the color look rich and dimensional
+- The product bottle should appear somewhere in the scene (on a table, in a bag, held in the other hand) but nails are PRIMARY
+- Scene ideas: elegant dinner (hand holding wine glass), café moment (hand wrapped around coffee cup), getting ready (hand on vanity mirror edge)
+- Every nail must look salon-perfect: smooth, even, no bubbles, no streaks, clean cuticle lines
+- Do NOT show chipped, damaged, or poorly applied polish — this is ASPIRATIONAL imagery` : ""}
 
 🚫 UNIVERSAL BANNED PROPS (check EVERY scene before finalizing):
 - Do NOT include: laptop, computer, keyboard, mouse, notebook, planner, pen, pencil,
@@ -1282,6 +1514,8 @@ STYLE:
 - The image must create DESIRE, not just inform
 - Warm natural lighting with depth
 - The product should look like something the viewer NEEDS, not just sees
+- Show a REAL usage moment — the customer sees themselves in the photo and feels the product solving their problem
+- The emotion in the image should be: satisfaction, confidence, joy, or relief — the customer AFTER using this product
 - 800x800px`,
         };
       }
@@ -1305,6 +1539,7 @@ ${strictBadgeRule}
 ${prohibitedWordsRule}
 ${spellingRule}
 ${colorRule}
+${getHandInFrameRule("packaging")}
 🔒 Show only the actual product from the reference.
 
 GOAL:
@@ -1313,14 +1548,31 @@ GOAL:
 - Make the customer feel they're getting MORE for their money
 
 LAYOUT:
-- ${pickRandom(["Elegant top-down flat-lay with ingredients/materials around the product", "3/4 angle hero shot on a premium surface with soft shadow", "Eye-level studio shot with a clean gradient background", "Overhead arrangement showing the product with its key components laid out neatly", "Dynamic low-angle shot making the product look impressive and premium"])}
+- ${/nail.?polish|nail.?lacquer|nail.?hardener|hardener.?nail|lipstick|mascara|makeup|cosmetic|beauty|甲油|口红|化妆|美妆/.test(strategy.category + " " + strategy.productName)
+  ? pickRandom([
+      "Product bottle on a marble or glass surface with soft reflection, alongside a beautifully polished hand showing the result",
+      "3/4 angle hero shot on a premium vanity surface with soft shadow, a hand with perfect nails resting nearby",
+      "Eye-level studio shot with a clean gradient background, product next to swatches or a polished nail close-up",
+      "Split composition: product bottle on left, stunning nail close-up on right showing the color payoff",
+    ])
+  : pickRandom([
+      "Elegant top-down flat-lay with the product's real components or accessories around it",
+      "3/4 angle hero shot on a premium surface with soft shadow",
+      "Eye-level studio shot with a clean gradient background",
+      "Overhead arrangement showing the product with its key components laid out neatly",
+      "Dynamic low-angle shot making the product look impressive and premium",
+    ])}
 - Product as visual hero — COMPLETE and UNCUT, fully visible
+- 🚫 Do NOT add random unrelated props (no food, nuts, crystals, leaves, or decorative items that have nothing to do with the product)
+- Only show the product itself and items directly related to its use
 - Clean premium spacing
 
 TEXT RULES:
 - EXACT headline text (copy verbatim, do not modify): "${strategy.valueHeadline}"
-- Up to two support labels highlighting concrete advantages (e.g., material, count, certification)
+- Up to two support labels from this pre-approved list ONLY: ${strategy.aPlusLabels.slice(0, 2).filter(Boolean).map(l => `"${l}"`).join(", ")}
 - ⚠️ Do NOT invent, rephrase, or expand the headline above. Use ONLY these exact words for the headline.
+- ⚠️ Do NOT invent certification claims (e.g., "Formaldehyde-Free", "Dermatologist Tested", "FDA Approved", "Certified Organic") — ONLY use the pre-approved labels above
+- ⚠️ Each support label must use UNIQUE words — do NOT repeat the same word twice in a single label
 - No "What You Get" framing, no long explanations
 
 STYLE:
@@ -1352,6 +1604,7 @@ ${strictBadgeRule}
 ${prohibitedWordsRule}
 ${spellingRule}
 🔒 Keep the product identical to the reference in every panel. Adults only.
+🔒 BOTTLE SHAPE CHECK: If the reference shows a SQUARE bottle, it MUST remain SQUARE in every panel. Do NOT round the corners or change to cylindrical.
 ${colorRule}
 ${diversityRule}
 ${humanAnatomyRule}
@@ -1383,19 +1636,19 @@ LAYOUT:
 
 🎨 VISUAL CONSISTENCY ACROSS PANELS:
 - Same color temperature across ALL panels (all warm OR all cool — NOT mixed)
-- SAME product color in every panel (refer to COLOR LOCK above)
+- SAME product color in every panel (refer to COLOR LOCK above) — even if panels have different lighting moods, the PRODUCT color must be identical
 - Same typography style: same font, same size, same text color for all labels
 - Same border/divider treatment between all panels
 - Labels positioned consistently (e.g., all at bottom-center of each panel)
 - Overall feel: cohesive set, not 3 random images thrown together
 
 SCENES (each = one buying reason):
-1. "${strategy.aPlusLabels[0]}" — ${strategy.scene1}
-2. "${strategy.aPlusLabels[1]}" — product detail or feature close-up
-3. "${strategy.aPlusLabels[2]}" — ${strategy.scene2}
+1. "${strategy.aPlusLabels[0] || "Premium Quality"}" — ${strategy.scene1}
+2. "${strategy.aPlusLabels[1] || "Easy to Use"}" — product detail or feature close-up
+${strategy.aPlusLabels.length >= 3 ? `3. "${strategy.aPlusLabels[2]}" — ${strategy.scene2}` : ""}
 
 TEXT RULES:
-- EXACT label per scene (copy verbatim, do not modify): "${strategy.aPlusLabels[0]}", "${strategy.aPlusLabels[1]}", "${strategy.aPlusLabels[2]}"
+- EXACT label per scene (copy verbatim, do not modify): ${strategy.aPlusLabels.filter(Boolean).map(l => `"${l}"`).join(", ")}
 - ⚠️ Do NOT invent, rephrase, or expand any label. Use ONLY these exact words.
 - No subtitles, no paragraphs, no placeholders
 
@@ -1404,6 +1657,9 @@ STYLE:
 - Warm editorial lighting
 - Clean scene separation with consistent borders
 - Elegant, conversion-focused composition
+- This is the LAST image before the customer decides — it must CLOSE THE SALE
+- Every panel should answer a potential objection: quality, versatility, value
+- The overall message: "This product fits perfectly into YOUR life"
 - 800x800px`,
         };
       }
@@ -1415,6 +1671,15 @@ STYLE:
           description: `${productName} — side-by-side comparison showing why our product wins.`,
           validationNotes: ["no real brand names", "left=ours right=generic", "max 4 comparison rows"],
           prompt: `Create a COMPARISON image for ${productName} — "Ours vs. Ordinary" side-by-side.
+${strategy.isNailPolish ? `
+🚨🚨🚨 READ THIS FIRST — NAIL POLISH COMPARISON — #1 RULE:
+The image MUST show HANDS WITH POLISHED NAILS on BOTH sides. This is the MOST IMPORTANT rule.
+- LEFT: Our bottle + a hand with GORGEOUS polished nails (salon-quality, mirror-gloss, flawless)
+- RIGHT: Generic bottle + a hand with MEDIOCRE polish (streaky, thin coverage, duller)
+- Do NOT just show two bottles — bottles alone do NOT sell nail polish. The NAILS are the proof.
+- The customer must SEE the quality difference ON ACTUAL NAILS, not just on bottles.
+- If the generated image shows only bottles without nails, it is REJECTED. REGENERATE with nails.
+` : ""}
 
 ⚠️ ${langRule}
 ${cleanCornerRule}
@@ -1427,6 +1692,29 @@ ${spellingRule}
 🔒 Left side: the REAL product from the reference. Right side: a GENERIC plain version (no real brand).
 ${colorRule}
 
+${strategy.isNailPolish ? `
+CONCEPT — NAIL POLISH COMPARISON (NAILS ARE THE PROOF):
+- This is a NAIL POLISH comparison — the customer cares about HOW IT LOOKS ON NAILS, not the bottle
+- The image has TWO HALVES:
+  - LEFT ("Ours" ✓): Our bottle in the background + a HAND with salon-quality polished nails in the foreground
+  - RIGHT ("Ordinary" ✗): A generic bottle in the background + a HAND with mediocre polish (streaky, thinner, duller)
+- The HANDS WITH POLISHED NAILS are the HERO elements — each hand fills at least 30% of its half
+- The bottles are SECONDARY — smaller, behind or beside the hands
+- Comparison rows below the hands show the text differences
+- The customer sees the nail quality difference INSTANTLY and chooses ours
+
+LAYOUT:
+- Clean white background, split into two equal halves
+- LEFT HALF (warm, premium lighting):
+  - A female hand with 4 beautifully polished nails (thumb hidden), glossy, even, salon-perfect
+  - Our product bottle placed behind/beside the hand, smaller
+  - Header: "Ours" with ✓
+- RIGHT HALF (cool, flat lighting):
+  - A female hand with mediocre polish — slightly streaky, thinner coverage, less glossy
+  - A generic plain bottle behind/beside the hand
+  - Header: "Ordinary" with ✗
+- Below each half: 2-3 comparison text rows with checkmarks/crosses
+` : `
 CONCEPT:
 - Split the image into LEFT ("Ours" ✓) and RIGHT ("Ordinary" ✗)
 - The customer instantly sees WHY our product is the better choice
@@ -1435,12 +1723,6 @@ CONCEPT:
 - ⚠️ CRITICAL: Left and right sides must show OPPOSITE descriptions — NOT the same text with different icons!
   - LEFT (✓): positive benefit of OUR product (e.g., "Quick Dry")
   - RIGHT (✗): the OPPOSITE problem of the generic product (e.g., "Slow Dry Time")
-
-COMPARISON ROWS — USE THESE EXACT TEXTS (LEFT ✓ vs RIGHT ✗):
-- Row 1 LEFT ✓: "${strategy.comparisonBadges[0]}"  →  Row 1 RIGHT ✗: "${strategy.comparisonOpposites[0] || "Basic Quality"}"
-- Row 2 LEFT ✓: "${strategy.comparisonBadges[1]}"  →  Row 2 RIGHT ✗: "${strategy.comparisonOpposites[1] || "Falls Short"}"
-- Row 3 LEFT ✓: "${strategy.comparisonBadges[2] || "Premium Quality"}"  →  Row 3 RIGHT ✗: "${strategy.comparisonOpposites[2] || "Cheap Feel"}"
-- ⚠️ Copy each text VERBATIM — do NOT rephrase, merge, or repeat left-side text on the right side
 
 LAYOUT:
 - Clean white background
@@ -1451,6 +1733,13 @@ LAYOUT:
 - Our product: crisp, well-lit, saturated colors, premium positioning
 - Generic product: slightly blurred, washed out, cheaper materials look, dull colors
 - The visual difference should be IMMEDIATELY obvious — customer decides in 1 second
+`}
+
+COMPARISON ROWS — USE THESE EXACT TEXTS (LEFT ✓ vs RIGHT ✗):
+- Row 1 LEFT ✓: "${strategy.comparisonBadges[0]}"  →  Row 1 RIGHT ✗: "${strategy.comparisonOpposites[0] || "Basic Quality"}"
+- Row 2 LEFT ✓: "${strategy.comparisonBadges[1]}"  →  Row 2 RIGHT ✗: "${strategy.comparisonOpposites[1] || "Falls Short"}"
+- Row 3 LEFT ✓: "${strategy.comparisonBadges[2] || "Premium Quality"}"  →  Row 3 RIGHT ✗: "${strategy.comparisonOpposites[2] || "Cheap Feel"}"
+- ⚠️ Copy each text VERBATIM — do NOT rephrase, merge, or repeat left-side text on the right side
 
 TEXT RULES:
 - Short labels only (2-3 words per comparison point)

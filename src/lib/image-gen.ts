@@ -12,7 +12,10 @@ async function resizeToTarget(dataUrl: string, useJpeg = false): Promise<string>
   const base64Data = base64Match[2];
   const buffer = Buffer.from(base64Data, "base64");
 
-  let pipeline = sharp(buffer).resize(TARGET_SIZE, TARGET_SIZE, { fit: "cover" });
+  let pipeline = sharp(buffer).resize(TARGET_SIZE, TARGET_SIZE, {
+    fit: "contain",
+    background: { r: 255, g: 255, b: 255, alpha: 1 },
+  });
 
   if (useJpeg) {
     const resized = await pipeline.jpeg({ quality: 90 }).toBuffer();
@@ -117,6 +120,8 @@ export async function generateProductImage(
 2. NO MINORS — Do NOT include babies, infants, children, or anyone under 18. Only show ADULTS.
 
 3. NO BRAND LOGOS — Do NOT include real brand names/logos (Coca-Cola, Nike, Apple, etc.). Use generic unbranded items only.
+
+4. IMAGE SIZE — Generate a SQUARE 1:1 aspect ratio image (800×800 pixels). Do NOT generate rectangular, portrait, or landscape images.
 
 `;
 
