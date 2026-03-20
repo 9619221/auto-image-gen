@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest, checkRateLimit } from "@/lib/api-auth";
 import OpenAI from "openai";
+import { geminiFetch } from "@/lib/gemini-fetch";
 import type { AnalysisResult } from "@/lib/types";
 import { filterProhibitedWords } from "@/lib/prohibited-words";
 import { sanitizeForPrompt, sanitizeArray, extractJSON } from "@/lib/sanitize";
@@ -14,6 +15,7 @@ function getClient() {
     apiKey,
     baseURL: process.env.ANALYZE_BASE_URL,
     timeout: 120_000,
+    fetch: geminiFetch,
   });
   return _titleClient;
 }

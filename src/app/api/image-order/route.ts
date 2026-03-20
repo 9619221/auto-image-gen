@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest, checkRateLimit } from "@/lib/api-auth";
 import { extractJSON } from "@/lib/sanitize";
 import OpenAI from "openai";
+import { geminiFetch } from "@/lib/gemini-fetch";
 import type { ImageScore } from "@/lib/types";
 
 function getClient() {
@@ -10,6 +11,7 @@ function getClient() {
   return new OpenAI({
     apiKey,
     baseURL: process.env.ANALYZE_BASE_URL,
+    fetch: geminiFetch,
   });
 }
 

@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import type { AnalysisResult } from "./types";
 import { extractJSON, validateShape } from "./sanitize";
+import { geminiFetch } from "./gemini-fetch";
 
 // 单例客户端
 let _analyzeClient: OpenAI | null = null;
@@ -14,6 +15,7 @@ function getClient() {
     apiKey,
     baseURL: process.env.ANALYZE_BASE_URL,
     timeout: 300_000, // 5分钟超时
+    fetch: geminiFetch,
   });
   return _analyzeClient;
 }

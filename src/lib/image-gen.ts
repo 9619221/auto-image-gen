@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import sharp from "sharp";
 import type { AnalysisLanguage } from "./types";
 import { LANGUAGE_ENGLISH_NAMES } from "./types";
+import { geminiFetch } from "./gemini-fetch";
 
 const TARGET_SIZE = 800;
 
@@ -58,6 +59,7 @@ function getClient() {
     apiKey,
     baseURL: process.env.GENERATE_BASE_URL,
     timeout: 300_000, // 5分钟超时
+    fetch: geminiFetch,
   });
   return _genClient;
 }
@@ -122,6 +124,12 @@ export async function generateProductImage(
 3. NO BRAND LOGOS — Do NOT include real brand names/logos (Coca-Cola, Nike, Apple, etc.). Use generic unbranded items only.
 
 4. IMAGE SIZE — Generate a SQUARE 1:1 aspect ratio image (800×800 pixels). Do NOT generate rectangular, portrait, or landscape images.
+
+5. PRODUCT CONSISTENCY — The generated product MUST be IDENTICAL to the reference photo:
+   - Same shape, same color, same proportions, same details
+   - Do NOT "improve", "upgrade", or "stylize" the product — reproduce it EXACTLY
+   - If the reference has specific features (open ring, 3 prongs, square bottle), they MUST appear in the output
+   - Compare your generated product against the reference BEFORE finalizing — if it looks different, REGENERATE
 
 `;
 

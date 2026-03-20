@@ -3,6 +3,7 @@ import { authenticateRequest, checkRateLimit } from "@/lib/api-auth";
 import { sanitizeForPrompt } from "@/lib/sanitize";
 import { extractJSON } from "@/lib/sanitize";
 import OpenAI from "openai";
+import { geminiFetch } from "@/lib/gemini-fetch";
 
 function getClient() {
   const apiKey = process.env.ANALYZE_API_KEY;
@@ -10,6 +11,7 @@ function getClient() {
   return new OpenAI({
     apiKey,
     baseURL: process.env.ANALYZE_BASE_URL,
+    fetch: geminiFetch,
   });
 }
 

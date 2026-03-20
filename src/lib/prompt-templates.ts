@@ -168,6 +168,20 @@ const BENEFIT_MAP: BenefitMatch[] = [
   { pattern: /curtain|窗帘/i,
     painPoint: "Light & Privacy Control", benefit: "Quality Fabric Drapes", badge: "Elegant" },
 
+  // === Fitness / Sports / Exercise ===
+  { pattern: /resistance.?band|拉力带|弹力带|阻力带/i,
+    painPoint: "Stretch Stronger Every Day", benefit: "Premium Resistance Band", badge: "Full Stretch" },
+  { pattern: /yoga|pilates|stretch|flexibility|瑜伽|普拉提|拉伸|柔韧/i,
+    painPoint: "Flexibility You Can Feel", benefit: "Deep Stretch Support", badge: "Flex Fit" },
+  { pattern: /exercise|workout|fitness|gym|training|锻炼|健身|训练/i,
+    painPoint: "Your Home Gym Essential", benefit: "Full Body Workout", badge: "Total Body" },
+  { pattern: /muscle|tone|sculpt|肌肉|塑形/i,
+    painPoint: "Sculpt & Tone", benefit: "Targeted Muscle Work", badge: "Body Sculpt" },
+  { pattern: /silicone|硅胶/i,
+    painPoint: "Skin-Friendly Material", benefit: "Soft Silicone Feel", badge: "Skin-Safe" },
+  { pattern: /recovery|rehab|physical.?therap|康复|理疗/i,
+    painPoint: "Recover Faster", benefit: "Gentle Recovery Aid", badge: "Rehab-Ready" },
+
   // === Cleaning / disposable ===
   { pattern: /dispos|one.?time|throw.?away|no.?clean|no.?wash|skip.?clean/i,
     painPoint: "Hate Doing Dishes?", benefit: "Zero Cleanup", badge: "Use & Toss" },
@@ -180,7 +194,7 @@ const BENEFIT_MAP: BenefitMatch[] = [
     painPoint: "Perfect Results Every Time", benefit: "Even Heat Distribution", badge: "Even Cooking" },
   // Durability / strength
   { pattern: /sturd|durable|strong|heavy.?duty|thick|reinforc|rigid|load.?bear/i,
-    painPoint: "Built Tough, Won't Bend", benefit: "Extra Strong Build", badge: "Extra Sturdy" },
+    painPoint: "Built to Last", benefit: "Extra Strong Build", badge: "Extra Sturdy" },
   { pattern: /leak.?proof|sealed|spill.?proof|no.?leak|water.?tight/i,
     painPoint: "No Spills, No Mess", benefit: "Leak-Proof Design", badge: "Leak-Proof" },
   // Lightweight / portable
@@ -188,9 +202,9 @@ const BENEFIT_MAP: BenefitMatch[] = [
     painPoint: "Easy to Carry", benefit: "Light but Strong", badge: "Lightweight" },
   // Size / capacity
   { pattern: /large.?capac|big.?size|spacious|roomy|generous.?size|family.?size/i,
-    painPoint: "Feeds the Whole Family", benefit: "Extra Large Capacity", badge: "Family Size" },
-  // Multi-pack / value
-  { pattern: /multi.?pack|value.?pack|bulk|(\d+).?pack|(\d+).?count|(\d+).?piece/i,
+    painPoint: "Room for the Whole Family", benefit: "Extra Large Capacity", badge: "Family Size" },
+  // Multi-pack / value — only match explicit multi-quantity terms (NOT "1 pack" or vague "value")
+  { pattern: /multi.?pack|value.?pack|bulk.?pack|bulk.?set|(\d{2,}).?pack|(\d{2,}).?count|(\d{2,}).?piece|[2-9].?pack|[2-9].?count/i,
     painPoint: "Stock Up & Save", benefit: "Great Value Pack", badge: "Bulk Value" },
   // Versatile / multi-use
   { pattern: /versatil|multi.?use|multi.?purpose|many.?use|all.?purpose/i,
@@ -319,6 +333,18 @@ function badgeToOpposite(badge: string): string {
     // Pet
     "Pet-Safe": "Unknown Safety",
     "Washable": "Hard to Clean",
+    // Clothing / Apparel
+    "Ultra Soft": "Scratchy Fabric",
+    "Eye-Catching": "Bland Design",
+    "Color-Fast": "Fades After Wash",
+    "Comfortable": "Uncomfortable Fit",
+    // Fitness / Sports
+    "Full Stretch": "Snaps Easily",
+    "Flex Fit": "Too Stiff",
+    "Total Body": "Limited Exercises",
+    "Body Sculpt": "No Targeted Training",
+    "Skin-Safe": "Irritates Skin",
+    "Rehab-Ready": "Too Intense",
   };
   return map[badge] || "Basic Quality";
 }
@@ -386,8 +412,18 @@ function inferProductStrategy(analysis: AnalysisResult) {
     `${category} ${productName}`.toLowerCase()
   );
 
+  // Detect if this is a jewelry/accessories product
+  const isJewelryProduct = /\bring\b|jewel|necklace|bracelet|\bearring\b|pendant|charm|\bbead\b|\bgem\b|pearl|diamond|gold\b|silver\b|sterling|饰品|戒指|项链|手链|耳环|珠宝|珍珠|钻石|黄金|白银/.test(
+    `${category} ${productName}`.toLowerCase()
+  );
+
+  // Detect if this is a clothing/apparel/fashion product
+  const isClothingProduct =/t.?shirt|tee\b|shirt|hoodie|sweater|sweatshirt|jacket|coat|dress|skirt|pants|jeans|shorts|legging|blouse|tank.?top|polo|cardigan|vest|romper|jumpsuit|bodysuit|pajama|sleepwear|underwear|boxer|brief|sock|scarf|beanie|hat|cap|glove|mitten|clothing|apparel|garment|wear|fashion|outfit|uniform|jersey|crop.?top|pullover|fleece|parka|windbreaker|kimono|robe|nightgown|T恤|衬衫|卫衣|外套|裤|裙|帽|袜|手套|围巾|睡衣|内衣/.test(
+    `${category} ${productName}`.toLowerCase()
+  );
+
   // Detect if this is an electronics/hardware/tools product (broad matching)
-  const isHardwareProduct = /connector|cable|wire(?!less)|adapter|plug|socket|terminal|switch|circuit|pcb|led\b|resistor|capacitor|sensor|module|arduino|raspberry|solder|motor|relay|fuse|crimp|splice|harness|gauge|amp\b|volt|watt|helping.?hand|third.?hand|magnif|clamp|vise|vice|workbench|work.?station|plier|wrench|screwdriver|drill|ratchet|repair.?tool|craft.?tool|hobby.?tool|heat.?gun|multimeter|oscilloscope|computer|pc\b|cpu|gpu|fan\b|power.?supply|psu|motherboard|component|extension.?cable|splitter|pin\b.*(?:cable|wire|connector)|接头|连接器|插头|插座|电缆|电线|开关|电路|焊|端子|排线|转接|钳|扳手|螺丝刀|工具|万用表|放大镜|电脑|风扇|电源|主板/.test(
+  const isHardwareProduct =/connector|cable|wire(?!less)|adapter|plug|socket|terminal|switch|circuit|pcb|led\b|resistor|capacitor|sensor|module|arduino|raspberry|solder|motor|relay|fuse|crimp|splice|harness|gauge|amp\b|volt|watt|helping.?hand|third.?hand|magnif|clamp|vise|vice|workbench|work.?station|plier|wrench|screwdriver|drill|ratchet|repair.?tool|craft.?tool|hobby.?tool|heat.?gun|multimeter|oscilloscope|computer|pc\b|cpu|gpu|fan\b|power.?supply|psu|motherboard|component|extension.?cable|splitter|pin\b.*(?:cable|wire|connector)|接头|连接器|插头|插座|电缆|电线|开关|电路|焊|端子|排线|转接|钳|扳手|螺丝刀|工具|万用表|放大镜|电脑|风扇|电源|主板/.test(
     `${category} ${productName}`.toLowerCase()
   );
 
@@ -399,6 +435,49 @@ function inferProductStrategy(analysis: AnalysisResult) {
     "Oven-Safe", "Food-Safe", "Family Size", "Waterproof", "With Lid",
     "Aluminum", "Full Set", "Multi-Use", "Bulk Value", "Premium",
     "Lightweight", "Great Gift", "Gift Idea", "Gift-Ready",
+  ]);
+
+  // Badges that should NOT appear on jewelry/accessories
+  const jewelryBannedBadges = new Set([
+    // Hardware / Tools
+    "Easy Setup", "Pro Grade", "Secure Fit", "Extra Sturdy", "Rated",
+    "Durable Construction", "Multi-Use", "Bulk Value",
+    // Kitchen / Food
+    "Food-Safe", "Non-Stick", "Oven-Safe", "Even Cooking", "Leak-Proof", "With Lid",
+    "Family Size", "Easy Clean",
+    // Electronics
+    "Waterproof", "Stackable",
+    // Pet
+    "Pet-Safe",
+    // Beauty specific (not jewelry)
+    "Quick Dry", "Long Wear", "Vivid Color", "Nail Armor", "Gel Finish",
+    "7-Day Wear", "Pigmented", "Pro Finish", "Shimmer", "Matte",
+    // Clothing
+    "Ultra Soft", "Color-Fast",
+    // Too generic for jewelry
+    "Lightweight", "Durable", "Premium",
+  ]);
+
+  // Badges that should NOT appear on clothing/apparel products
+  const clothingBannedBadges = new Set([
+    // Hardware / Tools
+    "Easy Setup", "Pro Grade", "Secure Fit", "Extra Sturdy", "Rated",
+    "Durable Construction", "Multi-Use",
+    // Kitchen / Food
+    "Food-Safe", "Non-Stick", "Oven-Safe", "Even Cooking", "Leak-Proof", "With Lid",
+    // Electronics
+    "Waterproof", "Stackable",
+    // Pet
+    "Pet-Safe",
+    // Beauty specific
+    "Quick Dry", "Long Wear", "Vivid Color", "Nail Armor", "Gel Finish",
+    "7-Day Wear", "Pigmented", "Pro Finish",
+    // Gemstone
+    "Kyanite", "Agate", "Crystal", "Jade", "Cat-Eye",
+    // Floral
+    "Lifelike", "Bouquet",
+    // Too generic / wrong vibe
+    "Bulk Value", "Family Size",
   ]);
 
   // Badges that should NOT appear on electronics/hardware products
@@ -433,6 +512,8 @@ function inferProductStrategy(analysis: AnalysisResult) {
       // Skip inappropriate badges for specific product categories
       if (isBeautyProduct && beautyBannedBadges.has(m.badge)) continue;
       if (isHardwareProduct && hardwareBannedBadges.has(m.badge)) continue;
+      if (isClothingProduct && clothingBannedBadges.has(m.badge)) continue;
+      if (isJewelryProduct && jewelryBannedBadges.has(m.badge)) continue;
       matched.push(m);
       usedPatterns.add(m.painPoint);
     }
@@ -441,7 +522,9 @@ function inferProductStrategy(analysis: AnalysisResult) {
   const matMatch = matchBenefit(materials);
   if (matMatch && !usedPatterns.has(matMatch.painPoint)) {
     if (!(isBeautyProduct && beautyBannedBadges.has(matMatch.badge))
-      && !(isHardwareProduct && hardwareBannedBadges.has(matMatch.badge))) {
+      && !(isHardwareProduct && hardwareBannedBadges.has(matMatch.badge))
+      && !(isClothingProduct && clothingBannedBadges.has(matMatch.badge))
+      && !(isJewelryProduct && jewelryBannedBadges.has(matMatch.badge))) {
       matched.push(matMatch);
     }
   }
@@ -496,6 +579,42 @@ function inferProductStrategy(analysis: AnalysisResult) {
     const hwFallbacks = getCategoryFallbacks(category, productName, materials);
     while (matched.length < 3) {
       const fb = hwFallbacks.find(f => !matched.some(m => m.painPoint === f.painPoint));
+      if (fb) {
+        matched.push(fb);
+      } else {
+        break;
+      }
+    }
+  }
+
+  // 安全网：二次过滤珠宝禁用 badge
+  if (isJewelryProduct) {
+    for (let i = matched.length - 1; i >= 0; i--) {
+      if (jewelryBannedBadges.has(matched[i].badge)) {
+        matched.splice(i, 1);
+      }
+    }
+    const jewelryFallbacks = getCategoryFallbacks(category, productName, materials);
+    while (matched.length < 3) {
+      const fb = jewelryFallbacks.find(f => !matched.some(m => m.painPoint === f.painPoint));
+      if (fb) {
+        matched.push(fb);
+      } else {
+        break;
+      }
+    }
+  }
+
+  // 安全网：二次过滤服装禁用 badge
+  if (isClothingProduct) {
+    for (let i = matched.length - 1; i >= 0; i--) {
+      if (clothingBannedBadges.has(matched[i].badge)) {
+        matched.splice(i, 1);
+      }
+    }
+    const clothingFallbacks = getCategoryFallbacks(category, productName, materials);
+    while (matched.length < 3) {
+      const fb = clothingFallbacks.find(f => !matched.some(m => m.painPoint === f.painPoint));
       if (fb) {
         matched.push(fb);
       } else {
@@ -580,6 +699,8 @@ function inferProductStrategy(analysis: AnalysisResult) {
     isBeautyProduct,
     isNailPolish: /nail.?polish|nail.?lacquer|nail.?hardener|hardener.?nail|甲油|指甲油/.test(`${category} ${productName}`.toLowerCase()),
     isHardwareProduct,
+    isJewelryProduct,
+    isClothingProduct,
     isSmallProduct: detectSmallProduct(analysis.estimatedDimensions || "", category, productName),
   };
 }
@@ -596,6 +717,26 @@ function getCategoryFallbacks(category: string, productName: string, materials: 
       { pattern: /^$/, painPoint: "Pro-Level Precision", benefit: "Professional Grade Tool", badge: "Pro Grade" },
       { pattern: /^$/, painPoint: "Quick & Easy Setup", benefit: "Ready to Use", badge: "Easy Setup" },
       { pattern: /^$/, painPoint: "Reliable Performance", benefit: "Secure Fit Every Time", badge: "Secure Fit" },
+    ];
+  }
+
+  // Fitness / Sports / Exercise
+  if (/resistance.?band|拉力带|弹力带|yoga|pilates|exercise|workout|fitness|gym|stretch.?band|training.?band|健身|锻炼|瑜伽|普拉提/.test(ctx)) {
+    return [
+      { pattern: /^$/, painPoint: "Stretch Stronger Every Day", benefit: "Premium Resistance Band", badge: "Full Stretch" },
+      { pattern: /^$/, painPoint: "Skin-Friendly Material", benefit: "Soft Silicone Feel", badge: "Skin-Safe" },
+      { pattern: /^$/, painPoint: "Your Home Gym Essential", benefit: "Full Body Workout", badge: "Total Body" },
+      { pattern: /^$/, painPoint: "Flexibility You Can Feel", benefit: "Deep Stretch Support", badge: "Flex Fit" },
+    ];
+  }
+
+  // Clothing / Apparel / Fashion
+  if (/t.?shirt|tee\b|shirt|hoodie|sweater|sweatshirt|jacket|coat|dress|skirt|pants|jeans|shorts|legging|blouse|tank.?top|polo|cardigan|vest|romper|jumpsuit|clothing|apparel|garment|fashion|T恤|衬衫|卫衣|外套|裤|裙/.test(ctx)) {
+    return [
+      { pattern: /^$/, painPoint: "Comfort All Day", benefit: "Soft Premium Fabric", badge: "Ultra Soft" },
+      { pattern: /^$/, painPoint: "Style That Stands Out", benefit: "Unique Design", badge: "Eye-Catching" },
+      { pattern: /^$/, painPoint: "Wear It Anywhere", benefit: "Versatile Styling", badge: "Versatile" },
+      { pattern: /^$/, painPoint: "Lasts Wash After Wash", benefit: "Fade-Resistant Print", badge: "Color-Fast" },
     ];
   }
 
@@ -676,6 +817,18 @@ function deriveResultHeadline(scene: string, audience: string, category: string,
   if (/electronic|electric|component|hardware|五金|电子|配件/.test(ctx2)) {
     const techHeadlines = ["Tech Essentials", "Reliable Every Time", "Built for Performance", "Connect With Confidence"];
     return techHeadlines[Math.floor(Math.random() * techHeadlines.length)];
+  }
+
+  // Fitness / Sports / Exercise
+  if (/resistance.?band|拉力带|弹力带|yoga|pilates|exercise|workout|fitness|gym|stretch.?band|健身|锻炼|瑜伽|普拉提/.test(ctx2)) {
+    const fitnessHeadlines = ["Your Fitness Upgrade", "Stretch & Strengthen", "Train Anywhere", "Feel the Difference", "Level Up Your Workout"];
+    return fitnessHeadlines[Math.floor(Math.random() * fitnessHeadlines.length)];
+  }
+
+  // Clothing / Apparel / Fashion
+  if (/t.?shirt|tee\b|shirt|hoodie|sweater|sweatshirt|jacket|coat|dress|skirt|pants|jeans|shorts|legging|blouse|tank.?top|polo|cardigan|vest|clothing|apparel|fashion|T恤|衬衫|卫衣|外套|裤|裙/.test(ctx2)) {
+    const clothingHeadlines = ["Wear With Confidence", "Style Meets Comfort", "Your New Favorite", "Look Good, Feel Great", "Effortless Style"];
+    return clothingHeadlines[Math.floor(Math.random() * clothingHeadlines.length)];
   }
 
   // Jewelry — stone-specific headlines
@@ -934,6 +1087,12 @@ function deriveValueHeadline(category: string, productName: string, materials: s
   if (/tool|wrench|plier|screwdriver|drill|repair|工具|扳手|钳|螺丝刀/.test(ctx)) return "Professional Grade";
   if (/switch|relay|circuit|fuse|motor|开关|继电器|电路|马达/.test(ctx)) return "Engineered to Last";
 
+  // Clothing / Apparel / Fashion
+  if (/t.?shirt|tee\b|shirt|hoodie|sweater|sweatshirt|jacket|coat|dress|skirt|pants|jeans|shorts|legging|blouse|tank.?top|polo|cardigan|vest|clothing|apparel|fashion|T恤|衬衫|卫衣|外套|裤|裙/.test(ctx)) {
+    const clothingValueHeadlines = ["Soft to the Touch", "Premium Comfort", "Designed to Last", "Your Style, Your Way"];
+    return clothingValueHeadlines[Math.floor(Math.random() * clothingValueHeadlines.length)];
+  }
+
   // Jewelry / gemstone — material authenticity
   if (/kyanite|蓝晶石/.test(ctx)) return "Genuine Kyanite";
   if (/agate|玛瑙/.test(ctx)) return "Genuine Natural Agate";
@@ -1143,6 +1302,23 @@ export function generatePlans(
 - Connector housing shape, size, and color must match the reference
 - Do NOT "upgrade" or "enhance" the product by adding more pins or wires
 - CHECK: Count the wires/pins in your generated image — if the count differs from the reference, REGENERATE
+
+🚨 JEWELRY / ACCESSORIES — PRODUCT FINGERPRINT:
+- METAL COLOR is LOCKED: gold stays gold, silver stays silver, rose gold stays rose gold — do NOT mix metals across images
+- STONE/PEARL position, size, and shape must EXACTLY match the reference — do NOT move, resize, or change the shape
+- Ring band style: if the reference shows an OPEN ring, keep it OPEN; if closed, keep it CLOSED
+- Setting style (prong, bezel, pave, channel) must match the reference exactly
+- The number and arrangement of stones/diamonds/crystals must be IDENTICAL to the reference
+- Chain style, clasp type, pendant orientation must match the reference
+- Do NOT add or remove any decorative elements (stones, engravings, textures)
+
+🚨 PRODUCT FINGERPRINT CHECKLIST (verify BEFORE finalizing):
+1. SILHOUETTE: Does the product outline match the reference? (overlay mentally)
+2. COLOR: Does each part of the product match the reference color? (body, accent, trim)
+3. DETAILS: Are small features correct? (number of stones, pattern, texture, hardware)
+4. PROPORTIONS: Are relative sizes of components correct? (e.g., pearl-to-band ratio)
+5. ORIENTATION: Is the product facing the correct direction? (opening direction, logo placement)
+If ANY check fails, REGENERATE with corrections.
 `;
 
   // Sanitize analysis fields to prevent prompt injection via user-edited data
@@ -1224,18 +1400,20 @@ If the provided headline or badge text contains any prohibited word, SKIP that t
 
   const humanAnatomyRule = `
 🚨 HUMAN ANATOMY — CRITICAL (ZERO TOLERANCE):
-🖐️ FINGER COUNT IS THE #1 ANATOMY RULE:
+🖐️ HAND RENDERING STRATEGY — MINIMIZE HAND VISIBILITY:
+- ⚠️ PREFERRED: Avoid showing hands whenever possible. Use these alternatives:
+  • Product placed on surface/table/shelf — no hands needed
+  • Person shown from far/medium distance where hand detail is too small to notice
+  • Hands behind back, in pockets, or cropped out of frame
+  • Over-the-shoulder shots where hands are not visible
+- If hands MUST appear (e.g., holding product), use SAFE strategies:
+  • Hand wraps around an object — the object hides the palm and most fingers
+  • Show only the back of the hand, not palm-side
+  • Use SINGLE HAND ONLY — two hands doubles the error risk
+  • Keep hands small in frame (medium/wide shot), NOT close-up
 - EVERY visible hand MUST have EXACTLY 5 fingers: 1 thumb + 4 fingers = 5 total
-- Count BEFORE rendering: thumb (short, thick) + index + middle + ring + pinky = 5. NEVER 4. NEVER 6.
-- If you cannot guarantee correct finger count, DO NOT show hands at all — crop them out or use a wider angle
-- For nail polish / beauty: if showing hands close-up, show ONLY 4 fingertips (curl the thumb behind) to reduce error risk
-
-🛡️ SAFE HAND POSES (use these to avoid deformed hands):
-- HOLDING AN OBJECT: hand wraps around a cup, glass, bottle, phone — the object hides the palm and some fingers, reducing error risk
-- FINGERTIPS ONLY: show only the tips of 4 fingers (thumb curled behind), nail-side toward camera
-- RESTING ON SURFACE: hand flat on a table/countertop, fingers relaxed and slightly apart — natural and easy to render correctly
-- SINGLE HAND ONLY: if the scene allows, show only ONE hand — two hands doubles the chance of errors
-- ⚠️ AVOID these high-risk poses: interlaced fingers, jazz hands (spread wide), pointing, making gestures, holding thin objects at odd angles
+- If you cannot guarantee correct finger count, DO NOT show hands — use a wider angle instead
+- ⚠️ NEVER show: interlaced fingers, spread hands, pointing, gestures, gripping thin objects at odd angles
 
 📐 SMALL PANEL RULE (for multi-panel layouts):
 - In small panels (under 50% of image area), use WIDER shots where hands are smaller and detail is less critical
@@ -1430,10 +1608,12 @@ ${colorRule}
 ${humanAnatomyRule}
 🔒 Show ONE product only. Match the reference product exactly.
 
-CONCEPT:
-- This image addresses a CUSTOMER PROBLEM and shows the product as the SOLUTION
+CONCEPT — BUYER PSYCHOLOGY:
+- This image addresses a REAL CUSTOMER PROBLEM and shows the product as the SOLUTION
 - The headline names the pain point the customer recognizes from daily life
 - The customer should feel: "Yes, that's exactly my problem — and this product fixes it!"
+- ⚠️ SELLER CONVERSION TIP: Think about what negative Amazon reviews say about COMPETITOR products — THAT is the pain point we solve
+- The badges should highlight SPECIFIC benefits that differentiate us (material, design, functionality), NOT generic claims
 
 📐 CAMERA ANGLE — MUST BE DIFFERENT FROM MAIN IMAGE:
 - ${pickRandom(featuresAngles)}
@@ -1528,10 +1708,15 @@ ${strategy.isNailPolish ? `
 - Do NOT use magnifying glass circles or detail callouts — just beautiful macro photography
 - Do NOT focus on the bottle detail (corners, threading, cap) — the RESULT matters, not the packaging
 ` : `
-CONCEPT:
-- This image answers: "Why should I buy THIS one instead of the cheaper alternative?"
+CONCEPT — PROVE THE QUALITY:
+- This image answers the buyer's doubt: "Is this really better than the $5 version?"
 - Show the quality difference the customer can FEEL through the image
 - Close-up detail proves the quality claim visually
+- ⚠️ Focus on the detail that MATTERS MOST to the buyer:
+  - Material texture (silicone smoothness, metal finish, fabric weave)
+  - Build quality (stitching, joints, seams, reinforcement)
+  - Design precision (alignment, symmetry, professional finish)
+- The buyer should think: "Okay this is clearly well-made, worth the price"
 `}
 - The headline states a clear BENEFIT, not just a feature name
 
@@ -1646,9 +1831,22 @@ SCENE:
 - Target customer: ${strategy.audience1}
 - Mood: ${pickRandom(lifestyleMoods)}
 - Composition: ${pickRandom(lifestyleCompositions)}
-- The product must be clearly visible and being USED (not just sitting there)
+- The product must be clearly visible in a real-world context
 - Show the RESULT of using the product — the customer's life is better
+- ⚠️ SELLER CONVERSION: The customer must see THEMSELVES in this image. The person in the scene should match the TARGET AUDIENCE — not a random model, but someone the buyer identifies with.
+- ⚠️ The scene should answer: "Where and when would I use this product?" — make it specific and aspirational
+- ⚠️ HAND AVOIDANCE: If the product does NOT need to be hand-held (e.g., clothing worn on body, bags on shoulder, items on table), do NOT show close-up hands. Use wider shots, over-shoulder angles, or place the product in its natural context without hand interaction.
 - ⚠️ The scene MUST match the product category — do NOT put fashion items in office scenes or jewelry in kitchens
+${strategy.isJewelryProduct ? `
+💍 JEWELRY LIFESTYLE — SPECIAL RULES:
+- Show the person WEARING the jewelry naturally — ring on finger, necklace around neck, earrings on ears, bracelet on wrist
+- Use a CLOSE-UP or MEDIUM CLOSE-UP angle so the jewelry is clearly visible while being worn
+- The jewelry must be IN FOCUS and well-lit — it should be the visual focal point
+- ⚠️ Do NOT add floating/overlaid product images — show ONLY the naturally worn jewelry in the scene
+- ⚠️ Do NOT composite or collage a product shot into the lifestyle image
+- The jewelry on the person must match the reference EXACTLY: same metal color, same stones, same design
+- Suggested compositions: hand resting on coffee cup (showing ring), touching necklace pendant, adjusting earring
+- Background should complement the jewelry: elegant restaurant, garden party, getting ready scene` : ""}
 - ⚠️ COLOR PROTECTION: Even in warm/golden-hour scenes, the PRODUCT must retain its TRUE color from the reference. Apply scene warmth to the environment ONLY, not to the product. Think of it as the product having its own white-balanced spotlight.
 ${strategy.isNailPolish ? `
 🎨 NAIL POLISH LIFESTYLE — NAILS ARE THE HERO:
@@ -1719,10 +1917,13 @@ ${getHandInFrameRule("packaging")}
 - ${pickRandom(valueAngles)}
 - ⚠️ Do NOT use the same straight-on front-facing angle — each image in the listing set must show the product from a UNIQUE perspective
 
-GOAL:
-- Show why THIS product beats the generic alternatives
-- Highlight material quality, quantity/count value, or unique design advantage
-- Make the customer feel they're getting MORE for their money
+GOAL — SELLER CONVERSION FOCUS:
+- Answer the buyer's #1 question: "What exactly am I getting for my money?"
+- Show ALL items included: main product + any accessories, bags, cases, extras
+- Highlight material quality that justifies the price
+- If the product comes in multiple colors/variants: show a small color swatch or "X colors available" note
+- Make the customer feel they're getting MORE value than competitor listings
+- ⚠️ Think like a buyer scrolling Amazon: What would make you stop and think "that's a great deal"?
 
 LAYOUT:
 - ${/nail.?polish|nail.?lacquer|nail.?hardener|hardener.?nail|lipstick|mascara|makeup|cosmetic|beauty|甲油|口红|化妆|美妆/.test(strategy.category + " " + strategy.productName)
@@ -1787,10 +1988,13 @@ ${diversityRule}
 ${humanAnatomyRule}
 ${aPlusSceneGuide}
 
-CONCEPT:
-- This image gives the customer 3 clear REASONS TO BUY
-- Each panel shows THE SAME PRODUCT (from reference) in a different use context
-- After seeing this image, the customer should have no doubts left
+CONCEPT — CLOSE THE SALE:
+- This image gives the customer 3 clear REASONS TO BUY NOW (not later, not from someone else)
+- Each panel answers a different buyer objection:
+  1. "Is it good quality?" → Show material/build quality
+  2. "Will it work for ME?" → Show it being used by someone like the target customer
+  3. "Is it worth the price?" → Show the value/versatility/what's included
+- After seeing this image, the customer should have ZERO doubts left
 
 🚨 CRITICAL — PRODUCT CONSISTENCY:
 - EVERY panel must show the EXACT SAME product from the reference photos
@@ -1798,6 +2002,12 @@ CONCEPT:
 - Do NOT add unrelated products (no phone holders, no other accessories)
 - If the product is a bottle cage, show ONLY a bottle cage in every panel
 - Each panel = same product, different angle or usage scenario
+${strategy.isJewelryProduct ? `
+💍 JEWELRY A+ — SPECIAL RULES:
+- Show the jewelry being WORN in lifestyle panels — on finger, neck, wrist, ears
+- Do NOT add floating/overlaid product cutouts — integrate the jewelry naturally into each scene
+- Each panel should show the jewelry in a different wear scenario (casual, elegant, work)
+- Metal color must be consistent across ALL panels` : ""}
 
 LAYOUT:
 - ${pickRandom(multiSceneLayouts)}
@@ -1892,14 +2102,17 @@ LAYOUT:
   - Header: "Ordinary" with ✗
 - Below each half: 2-3 comparison text rows with checkmarks/crosses
 ` : `
-CONCEPT:
+CONCEPT — CONVERSION-FOCUSED COMPARISON:
 - Split the image into LEFT ("Ours" ✓) and RIGHT ("Ordinary" ✗)
 - The customer instantly sees WHY our product is the better choice
 - Use green checkmarks ✓ on the left, red crosses ✗ on the right
-- Show 3-4 key differences that matter to the buyer
+- ⚠️ Each comparison row should address a REAL BUYER CONCERN:
+  - Material quality (what is it made of vs cheap alternatives)
+  - Durability/longevity (how long will it last)
+  - User experience (comfort, ease of use, results)
 - ⚠️ CRITICAL: Left and right sides must show OPPOSITE descriptions — NOT the same text with different icons!
-  - LEFT (✓): positive benefit of OUR product (e.g., "Quick Dry")
-  - RIGHT (✗): the OPPOSITE problem of the generic product (e.g., "Slow Dry Time")
+  - LEFT (✓): specific benefit buyers care about (e.g., "Skin-Safe Silicone")
+  - RIGHT (✗): the real problem with cheap alternatives (e.g., "Irritates Skin")
 
 LAYOUT:
 - Clean white background
