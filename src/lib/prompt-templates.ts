@@ -225,6 +225,13 @@ const BENEFIT_MAP: BenefitMatch[] = [
   // Anti-slip / grip
   { pattern: /anti.?slip|non.?slip|grip|rubber.?feet|no.?skid/i,
     painPoint: "Stays in Place", benefit: "Anti-Slip Grip", badge: "Non-Slip" },
+  // Electronics / Hardware / Connectors
+  { pattern: /connector|plug|socket|terminal|接头|连接器|插头|插座|端子/i,
+    painPoint: "Reliable Connection", benefit: "Secure Fit Every Time", badge: "Secure Fit" },
+  { pattern: /easy.?install|plug.?and.?play|plug.?n.?play|snap.?fit|quick.?connect|tool.?free/i,
+    painPoint: "Quick & Easy Install", benefit: "Plug & Play Setup", badge: "Easy Install" },
+  { pattern: /awg|gauge|amp|volt|watt|rated|current.?capacity/i,
+    painPoint: "Right Spec for the Job", benefit: "Proper Rating", badge: "Rated" },
   // Gift / gifting
   { pattern: /gift|present|occasion|birthday|holiday|christmas/i,
     painPoint: "Perfect Gift Idea", benefit: "Gift-Ready", badge: "Great Gift" },
@@ -300,7 +307,10 @@ function badgeToOpposite(badge: string): string {
     "Cat-Eye": "Plain Stone",
     "Multi-Wrap": "Basic Band",
     "Layered": "Single Strand",
-    // Electronics
+    // Electronics / Hardware
+    "Easy Install": "Complicated Setup",
+    "Secure Fit": "Loose Connection",
+    "Easy Setup": "Confusing Setup",
     "Aluminum": "Thin Plastic",
     "Earth-Wise": "Wasteful",
     "With Lid": "No Cover",
@@ -374,6 +384,11 @@ function inferProductStrategy(analysis: AnalysisResult) {
     `${category} ${productName}`.toLowerCase()
   );
 
+  // Detect if this is an electronics/hardware/tools product (broad matching)
+  const isHardwareProduct = /connector|cable|wire(?!less)|adapter|plug|socket|terminal|switch|circuit|pcb|led\b|resistor|capacitor|sensor|module|arduino|raspberry|solder|motor|relay|fuse|crimp|splice|harness|gauge|amp\b|volt|watt|helping.?hand|third.?hand|magnif|clamp|vise|vice|workbench|work.?station|plier|wrench|screwdriver|drill|ratchet|repair.?tool|craft.?tool|hobby.?tool|heat.?gun|multimeter|oscilloscope|computer|pc\b|cpu|gpu|fan\b|power.?supply|psu|motherboard|component|extension.?cable|splitter|pin\b.*(?:cable|wire|connector)|接头|连接器|插头|插座|电缆|电线|开关|电路|焊|端子|排线|转接|钳|扳手|螺丝刀|工具|万用表|放大镜|电脑|风扇|电源|主板/.test(
+    `${category} ${productName}`.toLowerCase()
+  );
+
   // Badges that should NOT appear on beauty products
   // Includes: spiritual/gemstone, construction/durability (sounds like hardware, not beauty)
   const beautyBannedBadges = new Set([
@@ -384,14 +399,28 @@ function inferProductStrategy(analysis: AnalysisResult) {
     "Lightweight", "Great Gift", "Gift Idea", "Gift-Ready",
   ]);
 
+  // Badges that should NOT appear on electronics/hardware products
+  const hardwareBannedBadges = new Set([
+    "Natural", "Kyanite", "Agate", "Crystal", "Jade", "Cat-Eye",
+    "Calming", "Handmade", "Polished", "Multi-Wrap", "Unisex", "Layered",
+    "Lifelike", "Realistic", "Bouquet", "Elegant", "Decor", "Ambient", "Plush", "Layered",
+    "Great Gift", "Gift Idea", "Gift-Ready",
+    "Shimmer", "Vivid Color", "True Color", "Matte",
+    "Volumizing", "Breathable", "Hydrating", "UV Shield",
+    "Pro Finish", "Soft Touch", "Quick Dry", "7-Day Wear",
+    "Gel Finish", "Long Wear", "Pigmented", "Nail Armor",
+    "Food-Safe", "Non-Stick", "Oven-Safe", "Even Cooking",
+  ]);
+
   // Match each selling point to a benefit
   const matched: BenefitMatch[] = [];
   const usedPatterns = new Set<string>();
   for (const sp of sellingPoints) {
     const m = matchBenefit(sp);
     if (m && !usedPatterns.has(m.painPoint)) {
-      // Skip spiritual/gemstone badges for beauty products
+      // Skip inappropriate badges for specific product categories
       if (isBeautyProduct && beautyBannedBadges.has(m.badge)) continue;
+      if (isHardwareProduct && hardwareBannedBadges.has(m.badge)) continue;
       matched.push(m);
       usedPatterns.add(m.painPoint);
     }
@@ -399,7 +428,8 @@ function inferProductStrategy(analysis: AnalysisResult) {
   // Also check materials for extra matches
   const matMatch = matchBenefit(materials);
   if (matMatch && !usedPatterns.has(matMatch.painPoint)) {
-    if (!(isBeautyProduct && beautyBannedBadges.has(matMatch.badge))) {
+    if (!(isBeautyProduct && beautyBannedBadges.has(matMatch.badge))
+      && !(isHardwareProduct && hardwareBannedBadges.has(matMatch.badge))) {
       matched.push(matMatch);
     }
   }
@@ -436,6 +466,24 @@ function inferProductStrategy(analysis: AnalysisResult) {
     const beautyFallbacks = getCategoryFallbacks(category, productName, materials);
     while (matched.length < 3) {
       const fb = beautyFallbacks.find(f => !matched.some(m => m.painPoint === f.painPoint));
+      if (fb) {
+        matched.push(fb);
+      } else {
+        break;
+      }
+    }
+  }
+
+  // 安全网：二次过滤五金/电子禁用 badge
+  if (isHardwareProduct) {
+    for (let i = matched.length - 1; i >= 0; i--) {
+      if (hardwareBannedBadges.has(matched[i].badge)) {
+        matched.splice(i, 1);
+      }
+    }
+    const hwFallbacks = getCategoryFallbacks(category, productName, materials);
+    while (matched.length < 3) {
+      const fb = hwFallbacks.find(f => !matched.some(m => m.painPoint === f.painPoint));
       if (fb) {
         matched.push(fb);
       } else {
@@ -519,6 +567,7 @@ function inferProductStrategy(analysis: AnalysisResult) {
     audience1,
     isBeautyProduct,
     isNailPolish: /nail.?polish|nail.?lacquer|nail.?hardener|hardener.?nail|甲油|指甲油/.test(`${category} ${productName}`.toLowerCase()),
+    isHardwareProduct,
     isSmallProduct: detectSmallProduct(analysis.estimatedDimensions || "", category, productName),
   };
 }
@@ -527,8 +576,19 @@ function inferProductStrategy(analysis: AnalysisResult) {
 function getCategoryFallbacks(category: string, productName: string, materials: string): BenefitMatch[] {
   const ctx = `${category} ${productName} ${materials}`.toLowerCase();
 
-  // Jewelry / gemstone / accessories
-  if (/ring|jewel|necklace|bracelet|earring|pendant|charm|bead|gem|stone|crystal|agate|kyanite|jade|quartz|饰品|戒指|项链|手链|耳环|珠|水晶|玛瑙/.test(ctx)) {
+  // ⚡ Electronics / Hardware / Connectors / Tools — MUST be checked BEFORE jewelry
+  // (tools for jewelry making should get tool badges, not jewelry badges)
+  if (/connector|cable|wire|adapter|plug|socket|terminal|switch|circuit|pcb|led|module|electronic|electric|tool|hardware|motor|relay|fuse|crimp|solder|helping.?hand|third.?hand|magnif|clamp|vise|vice|workbench|work.?station|plier|wrench|screwdriver|drill|repair|station|接头|连接器|插头|电|焊|端子|工具|五金|钳|扳手|螺丝刀|放大镜/.test(ctx)) {
+    return [
+      { pattern: /^$/, painPoint: "Built Tough", benefit: "Durable Construction", badge: "Extra Sturdy" },
+      { pattern: /^$/, painPoint: "Stock Up & Save", benefit: "Bulk Pack Value", badge: "Bulk Value" },
+      { pattern: /^$/, painPoint: "Quick & Easy Setup", benefit: "Ready to Use", badge: "Easy Setup" },
+      { pattern: /^$/, painPoint: "Reliable Performance", benefit: "Secure Fit Every Time", badge: "Secure Fit" },
+    ];
+  }
+
+  // Jewelry / gemstone / accessories (word boundaries to avoid matching "wiring", "spring" etc.)
+  if (/\bring\b|jewel|necklace|bracelet|\bearring\b|pendant|charm|\bbead\b|\bgem\b|\bstone\b|crystal|agate|kyanite|jade|quartz|饰品|戒指|项链|手链|耳环|珠|水晶|玛瑙/.test(ctx)) {
     return [
       { pattern: /^$/, painPoint: "Genuine Natural Stone", benefit: "Real Natural Material", badge: "Natural" },
       { pattern: /^$/, painPoint: "Wear It Your Way", benefit: "Versatile Styling", badge: "Versatile" },
@@ -578,7 +638,7 @@ function getCategoryFallbacks(category: string, productName: string, materials: 
   return [
     { pattern: /^$/, painPoint: "Quality You Can Feel", benefit: "Premium Material", badge: "Premium" },
     { pattern: /^$/, painPoint: "Built to Last", benefit: "Durable Design", badge: "Durable" },
-    { pattern: /^$/, painPoint: "Thoughtful Gift", benefit: "Gift-Ready", badge: "Gift Idea" },
+    { pattern: /^$/, painPoint: "Ready to Use", benefit: "Easy Setup", badge: "Easy Setup" },
   ];
 }
 
@@ -587,6 +647,23 @@ function deriveResultHeadline(scene: string, audience: string, category: string,
   const cat = category.toLowerCase();
   const mat = (materials || "").toLowerCase();
   const ctx2 = `${cat} ${mat}`;
+
+  // ⚡ Electronics / Hardware / Tools — check BEFORE jewelry (tools for jewelry ≠ jewelry)
+  if (/connector|plug|socket|terminal|crimp|splice|接头|连接器|插头|插座|端子/.test(ctx2)) {
+    const hwHeadlines = ["Reliable Every Time", "Connect With Confidence", "Solid Connection", "Wired Right"];
+    return hwHeadlines[Math.floor(Math.random() * hwHeadlines.length)];
+  }
+  if (/solder|helping.?hand|third.?hand|magnif|clamp|vise|vice|焊|放大镜/.test(ctx2)) {
+    const toolHeadlines = ["Precision Made Easy", "Hands-Free Precision", "Work Smarter", "Built for the Job"];
+    return toolHeadlines[Math.floor(Math.random() * toolHeadlines.length)];
+  }
+  if (/wire|cable|harness|电线|电缆|排线/.test(ctx2)) return "Stay Connected";
+  if (/tool|wrench|plier|screwdriver|drill|repair|工具|扳手|钳|螺丝刀|钻/.test(ctx2)) return "Get the Job Done";
+  if (/switch|relay|circuit|fuse|motor|开关|继电器|电路|保险丝|马达/.test(ctx2)) return "Built for Reliability";
+  if (/electronic|electric|component|hardware|五金|电子|配件/.test(ctx2)) {
+    const techHeadlines = ["Tech Essentials", "Reliable Every Time", "Built for Performance", "Connect With Confidence"];
+    return techHeadlines[Math.floor(Math.random() * techHeadlines.length)];
+  }
 
   // Jewelry — stone-specific headlines
   if (/kyanite|蓝晶石/.test(ctx2)) return "Calm Blue Energy";
@@ -605,7 +682,9 @@ function deriveResultHeadline(scene: string, audience: string, category: string,
   if (/pearl|珍珠/.test(ctx2)) return "Classic Pearl Elegance";
 
   // Generic jewelry fallback — randomize
-  if (/ring|jewel|necklace|bracelet|earring|pendant|charm|accessori|饰品|戒指|项链|手链|耳环/.test(cat)) {
+  // Use \b word boundary to avoid matching "wiring", "spring" etc.
+  // Only match "accessori" if NOT electronics/hardware context
+  if (/\bring\b|(?<!electronic.{0,3})(?<!electric.{0,3})\bjewel|necklace|bracelet|\bearring\b|pendant|charm|饰品|戒指|项链|手链|耳环/.test(cat) && !/electronic|electric|connector|cable|wire|tool|hardware|solder|pcb|circuit|电子|电气|工具|五金|焊/.test(cat)) {
     const jewelryHeadlines = ["Wear Your Story", "Everyday Elegance", "Your Signature Look", "Simply Beautiful"];
     return jewelryHeadlines[Math.floor(Math.random() * jewelryHeadlines.length)];
   }
@@ -650,12 +729,19 @@ function deriveResultHeadline(scene: string, audience: string, category: string,
   // Pet products
   if (/pet|dog|cat|puppy|kitten|宠物|猫|狗/.test(cat)) return "Pet-Approved";
 
-  // Electronics / Tech
-  if (/charg|cable|adapter|充电|数据线/.test(ctx2)) return "Stay Powered Up";
+  // Electronics / Tech / Hardware
+  if (/connector|plug|socket|terminal|crimp|splice|接头|连接器|插头|插座|端子/.test(ctx2)) {
+    const hwHeadlines = ["Reliable Every Time", "Connect With Confidence", "Solid Connection", "Wired Right"];
+    return hwHeadlines[Math.floor(Math.random() * hwHeadlines.length)];
+  }
+  if (/wire|cable|harness|电线|电缆|排线/.test(ctx2)) return "Stay Connected";
+  if (/charg|adapter|充电|数据线/.test(ctx2)) return "Stay Powered Up";
   if (/headphone|earphone|earbud|speaker|耳机|音箱/.test(ctx2)) return "Sound Perfected";
   if (/phone.?case|手机壳/.test(ctx2)) return "Style & Protection";
   if (/keyboard|mouse|键盘|鼠标/.test(ctx2)) return "Type in Comfort";
   if (/light|lamp|led|灯/.test(ctx2)) return "Light Up Your Space";
+  if (/tool|wrench|plier|screwdriver|drill|工具|扳手|钳|螺丝刀|钻/.test(ctx2)) return "Get the Job Done";
+  if (/switch|relay|circuit|fuse|开关|继电器|电路|保险丝/.test(ctx2)) return "Built for Reliability";
 
   // Then fall back to scene-based matching
   const ctx = `${scene} ${audience} ${category}`.toLowerCase();
@@ -676,7 +762,7 @@ function getProductVisibilityRule(category: string, productName: string): string
   const ctx = `${category} ${productName}`.toLowerCase();
 
   // Small wearable items — product MUST be prominent
-  if (/ring|jewel|necklace|bracelet|earring|pendant|charm|watch|戒指|项链|手链|耳环|手表|饰品/.test(ctx)) {
+  if (/\bring\b|jewel|necklace|bracelet|\bearring\b|pendant|charm|watch|戒指|项链|手链|耳环|手表|饰品/.test(ctx)) {
     return `
 🔍 SMALL PRODUCT VISIBILITY — CRITICAL:
 - This is a SMALL wearable product. It MUST be the visual focal point.
@@ -706,7 +792,26 @@ function getProductVisibilityRule(category: string, productName: string): string
 function getCategorySceneGuide(category: string, productName: string): string {
   const ctx = `${category} ${productName}`.toLowerCase();
 
-  if (/ring|jewel|necklace|bracelet|earring|pendant|charm|饰品|戒指|项链|手链|耳环/.test(ctx)) {
+  // ⚡ Electronics / Hardware / Tools — check BEFORE jewelry (tools for jewelry making ≠ jewelry)
+  if (/connector|cable|wire|adapter|plug|socket|terminal|switch|circuit|pcb|led|solder|helping.?hand|third.?hand|magnif|clamp|vise|vice|tool|hardware|repair|station|接头|连接器|插头|电|焊|端子|工具|五金|放大镜/.test(ctx)) {
+    const hwScenes = [
+      "person at a well-organized workbench, soldering iron in hand, using the product on a circuit board — warm overhead task light, tools neatly arranged",
+      "electronics hobbyist at a clean desk with oscilloscope and components — product prominently in use, focused work atmosphere",
+      "workshop or garage setting, product being used for a repair project — good task lighting, organized tools visible",
+      "maker space or lab environment, person assembling electronics — product is the central focus of the work",
+    ];
+    const chosenScene = hwScenes[Math.floor(Math.random() * hwScenes.length)];
+    return `
+🎬 SCENE DIRECTION (Tools/Electronics):
+- USE THIS SPECIFIC SCENE: ${chosenScene}
+- Show the product being USED in a real work context
+- Background: workshop, workbench, lab, or maker space — NOT a living room, garden, or fashion setting
+- Do NOT use: jewelry store scenes, fashion/beauty settings, nature walks, cafés
+- The person should look focused and competent — this is a WORK tool, not a fashion accessory
+`;
+  }
+
+  if (/\bring\b|jewel|necklace|bracelet|\bearring\b|pendant|charm|饰品|戒指|项链|手链|耳环/.test(ctx)) {
     // 随机选一个场景方向，避免总是同一个
     const jewelryScenes = [
       "getting ready for a date night — mirror, vanity, warm light",
@@ -809,12 +914,19 @@ function getCategorySceneGuide(category: string, productName: string): string {
 function deriveValueHeadline(category: string, productName: string, materials: string): string {
   const ctx = `${category} ${productName} ${materials}`.toLowerCase();
 
+  // ⚡ Electronics / Hardware / Tools — check BEFORE jewelry
+  if (/connector|plug|socket|terminal|crimp|splice|接头|连接器|插头|插座|端子/.test(ctx)) return "Reliable Connection";
+  if (/solder|helping.?hand|third.?hand|magnif|clamp|vise|vice|焊|放大镜/.test(ctx)) return "Precision You Can Trust";
+  if (/wire|cable|harness|电线|电缆|排线/.test(ctx)) return "Secure Connection";
+  if (/tool|wrench|plier|screwdriver|drill|repair|工具|扳手|钳|螺丝刀/.test(ctx)) return "Professional Grade";
+  if (/switch|relay|circuit|fuse|motor|开关|继电器|电路|马达/.test(ctx)) return "Engineered to Last";
+
   // Jewelry / gemstone — material authenticity
   if (/kyanite|蓝晶石/.test(ctx)) return "Genuine Kyanite";
   if (/agate|玛瑙/.test(ctx)) return "Genuine Natural Agate";
   if (/crystal|水晶|quartz/.test(ctx)) return "Real Crystal Stone";
   if (/jade|翡翠|玉/.test(ctx)) return "Authentic Jade";
-  if (/ring|jewel|necklace|bracelet|earring|pendant|charm|bead|gem|stone|饰品|戒指|项链|手链|耳环|珠/.test(ctx)) return "Natural Stone Quality";
+  if (/\bring\b|jewel|necklace|bracelet|\bearring\b|pendant|charm|\bbead\b|\bgem\b|\bstone\b|饰品|戒指|项链|手链|耳环|珠/.test(ctx)) return "Natural Stone Quality";
 
   // Beauty / Cosmetics
   if (/nail.?polish|nail.?lacquer|甲油|指甲油/.test(ctx)) return "Pro Formula, Home Price";
@@ -833,11 +945,15 @@ function deriveValueHeadline(category: string, productName: string, materials: s
   if (/candle|蜡烛|香薰/.test(ctx)) return "Warm Ambiance";
   if (/decor|decorat|装饰|摆件/.test(ctx)) return "Thoughtful Design";
 
-  // Electronics / Tech
-  if (/charg|cable|adapter|充电|数据线/.test(ctx)) return "Fast & Reliable";
+  // Electronics / Tech / Hardware
+  if (/connector|plug|socket|terminal|crimp|splice|接头|连接器|插头|插座|端子/.test(ctx)) return "Reliable Connection";
+  if (/wire|cable|harness|电线|电缆|排线/.test(ctx)) return "Secure Connection";
+  if (/charg|adapter|充电|数据线/.test(ctx)) return "Fast & Reliable";
   if (/headphone|earphone|earbud|speaker|耳机|音箱/.test(ctx)) return "Clear Sound Quality";
   if (/phone.?case|手机壳/.test(ctx)) return "Tough Protection";
   if (/keyboard|mouse|键盘|鼠标/.test(ctx)) return "Precision Control";
+  if (/tool|wrench|plier|screwdriver|drill|工具|扳手|钳|螺丝刀/.test(ctx)) return "Professional Grade";
+  if (/switch|relay|circuit|fuse|motor|开关|继电器|电路|马达/.test(ctx)) return "Engineered to Last";
 
   if (/aluminum|steel|metal|iron/.test(ctx)) return "Built to Last";
   if (/food.?grade|bpa.?free|safe|non.?toxic/.test(ctx)) return "Food-Safe Quality";
@@ -998,14 +1114,22 @@ export function generatePlans(
 - Keep the exact outer silhouette, slots, openings, compartments from the reference
 - Do not add, remove, or redesign any structural parts
 
-🚨 BOTTLE/CONTAINER SHAPE — ZERO TOLERANCE:
+🚨 PRODUCT SHAPE & DETAILS — ZERO TOLERANCE:
 - If the reference shows a SQUARE bottle, generate a SQUARE bottle — NOT round, NOT cylindrical
 - If the reference shows a ROUND bottle, generate a ROUND bottle — NOT square
 - The bottle cross-section shape is LOCKED: square stays square, round stays round, oval stays oval
 - CAP/LID must match the reference EXACTLY: same shape (dome, flat, tapered), same color, same finish (matte, glossy, metallic)
 - Do NOT change cap color from rose gold to yellow gold, or from gold to silver, etc.
 - The bottle-to-cap proportion must remain the same as in the reference
-- CHECK: Before finalizing, compare your generated bottle silhouette against the reference — if the shape differs, REGENERATE
+
+🚨 CONNECTOR / CABLE / WIRE — EXACT COUNT MATCH:
+- Count the EXACT number of wires/pins/prongs in the reference image and match it PRECISELY
+- If the reference shows 3 wires (e.g. red, black, yellow), generate EXACTLY 3 wires — NOT 4, NOT 6, NOT 8
+- If the reference shows a 3-pin connector, generate a 3-pin connector — NOT 6-pin, NOT 8-pin
+- Wire COLORS must match the reference exactly (e.g. red+black+yellow stays red+black+yellow)
+- Connector housing shape, size, and color must match the reference
+- Do NOT "upgrade" or "enhance" the product by adding more pins or wires
+- CHECK: Count the wires/pins in your generated image — if the count differs from the reference, REGENERATE
 `;
 
   // Sanitize analysis fields to prevent prompt injection via user-edited data
