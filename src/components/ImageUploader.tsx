@@ -155,6 +155,17 @@ export default function ImageUploader({
                   📦 套装组合
                   <span className="block text-xs mt-0.5 opacity-80">多件不同商品组合销售</span>
                 </button>
+                <button
+                  onClick={() => onProductModeChange("variants")}
+                  className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                    productMode === "variants"
+                      ? "bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow-md shadow-indigo-200"
+                      : "bg-white text-slate-600 border border-slate-200 hover:border-indigo-300"
+                  }`}
+                >
+                  🎨 多色/多规格
+                  <span className="block text-xs mt-0.5 opacity-80">同一商品的不同颜色或规格</span>
+                </button>
               </div>
             </div>
           )}

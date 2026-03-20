@@ -116,7 +116,7 @@ const BENEFIT_MAP: BenefitMatch[] = [
 
   // === Beauty / Cosmetics / Nail / Skincare ===
   { pattern: /nail.?hardener|hardener.?nail|nail.?strengthen|强化甲|硬甲/i,
-    painPoint: "Weak, Brittle Nails?", benefit: "Nail-Strengthening Formula", badge: "Nail Armor" },
+    painPoint: "Weak, Brittle Nails?", benefit: "Nail-Strengthening Formula", badge: "Chip-Free" },
   { pattern: /color.?strong|strong.?color|显色/i,
     painPoint: "Color That Pops", benefit: "Vivid Color Payoff", badge: "Vivid Color" },
   { pattern: /nail.?polish|nail.?lacquer|甲油|指甲油/i,
@@ -146,7 +146,7 @@ const BENEFIT_MAP: BenefitMatch[] = [
   { pattern: /makeup|cosmetic|beauty|化妆|美妆/i,
     painPoint: "Makeup That Works as Hard as You", benefit: "Pro-Level Results", badge: "Pro Finish" },
   { pattern: /brush|applicator|刷子|化妆刷/i,
-    painPoint: "Streaky Application?", benefit: "Smooth Every Stroke", badge: "Soft Touch" },
+    painPoint: "Streaky Application?", benefit: "Smooth Every Stroke", badge: "Salon Finish" },
 
   // === Home Décor / Flowers / Plants ===
   { pattern: /artificial|faux|fake|silk.?flower|仿真|假花|绢花/i,
@@ -281,7 +281,7 @@ function badgeToOpposite(badge: string): string {
     "Hydrating": "Dries Out Skin",
     "UV Shield": "No Protection",
     "Pro Finish": "Amateur Look",
-    "Soft Touch": "Rough & Stiff",
+    "Soft Touch": "Rough & Stiff", // legacy — kept for compatibility
     // Food / Kitchen
     "Food-Safe": "Unknown Safety",
     "Non-Stick": "Food Sticks On",
@@ -315,7 +315,8 @@ function badgeToOpposite(badge: string): string {
     "Display": "Flimsy Frame",
     "Plush": "Flat & Thin",
     // Nail / Beauty specific
-    "Nail Armor": "Weak & Brittle",
+    "Chip-Free": "Chips in Hours",
+    "Salon Finish": "Streaky & Uneven",
     // Jewelry
     "Calming": "No Character",
     "Cat-Eye": "Plain Stone",
@@ -450,8 +451,8 @@ function inferProductStrategy(analysis: AnalysisResult) {
     // Pet
     "Pet-Safe",
     // Beauty specific (not jewelry)
-    "Quick Dry", "Long Wear", "Vivid Color", "Nail Armor", "Gel Finish",
-    "7-Day Wear", "Pigmented", "Pro Finish", "Shimmer", "Matte",
+    "Quick Dry", "Long Wear", "Vivid Color", "Chip-Free", "Gel Finish",
+    "7-Day Wear", "Pigmented", "Pro Finish", "Shimmer", "Matte", "Salon Finish",
     // Clothing
     "Ultra Soft", "Color-Fast",
     // Too generic for jewelry
@@ -470,8 +471,8 @@ function inferProductStrategy(analysis: AnalysisResult) {
     // Pet
     "Pet-Safe",
     // Beauty specific
-    "Quick Dry", "Long Wear", "Vivid Color", "Nail Armor", "Gel Finish",
-    "7-Day Wear", "Pigmented", "Pro Finish",
+    "Quick Dry", "Long Wear", "Vivid Color", "Chip-Free", "Gel Finish",
+    "7-Day Wear", "Pigmented", "Pro Finish", "Salon Finish",
     // Gemstone
     "Kyanite", "Agate", "Crystal", "Jade", "Cat-Eye",
     // Floral
@@ -493,8 +494,8 @@ function inferProductStrategy(analysis: AnalysisResult) {
     // Beauty / Cosmetics
     "Shimmer", "Vivid Color", "True Color", "Matte",
     "Volumizing", "Breathable", "Hydrating", "UV Shield",
-    "Pro Finish", "Soft Touch", "Quick Dry", "7-Day Wear",
-    "Gel Finish", "Long Wear", "Pigmented", "Nail Armor",
+    "Pro Finish", "Salon Finish", "Quick Dry", "7-Day Wear",
+    "Gel Finish", "Long Wear", "Pigmented", "Chip-Free",
     // Kitchen / Food
     "Food-Safe", "Non-Stick", "Oven-Safe", "Even Cooking",
     // Pet
@@ -1287,12 +1288,15 @@ export function generatePlans(
 - Do not add, remove, or redesign any structural parts
 
 🚨 PRODUCT SHAPE & DETAILS — ZERO TOLERANCE:
-- If the reference shows a SQUARE bottle, generate a SQUARE bottle — NOT round, NOT cylindrical
+- If the reference shows a SQUARE bottle, generate a SQUARE bottle — NOT round, NOT cylindrical, NOT taller/narrower
 - If the reference shows a ROUND bottle, generate a ROUND bottle — NOT square
 - The bottle cross-section shape is LOCKED: square stays square, round stays round, oval stays oval
+- BOTTLE PROPORTIONS are LOCKED: If the reference bottle is short and wide (height ≈ width), do NOT generate a tall slim bottle. Measure the height-to-width RATIO from the reference and MATCH IT in every image.
 - CAP/LID must match the reference EXACTLY: same shape (dome, flat, tapered), same color, same finish (matte, glossy, metallic)
 - Do NOT change cap color from rose gold to yellow gold, or from gold to silver, etc.
 - The bottle-to-cap proportion must remain the same as in the reference
+- LABEL TEXT LAYOUT: The text on the bottle label must follow the SAME arrangement as the reference — same line breaks, same font sizes, same vertical order. Do NOT rearrange, resize, or reflow the label text.
+- ⚠️ COMMON BOTTLE FAILURE: AI often generates a taller/slimmer bottle than the reference. If the reference is a squat/short bottle, KEEP IT squat/short. This is especially critical for nail polish bottles which are typically short and wide.
 
 🚨 CONNECTOR / CABLE / WIRE — EXACT COUNT MATCH:
 - Count the EXACT number of wires/pins/prongs in the reference image and match it PRECISELY
@@ -1398,7 +1402,45 @@ If the provided headline or badge text contains any prohibited word, SKIP that t
 - Show exactly the number of badges specified in TEXT RULES — no more, no less
 `;
 
-  const humanAnatomyRule = `
+  // 美甲/美容产品：手是展示产品效果的核心载体，需要高质量渲染而非隐藏
+  const beautyHandRule = `
+🚨 HUMAN ANATOMY — CRITICAL (ZERO TOLERANCE):
+🖐️ BEAUTY PRODUCT — HIGH-QUALITY HAND RENDERING:
+⚠️ For this beauty/nail product, the hand IS the canvas — it MUST appear and look flawless.
+
+📋 HAND QUALITY CHECKLIST (follow EVERY point):
+1. FINGER COUNT: EXACTLY 5 fingers per hand — 1 thumb + 4 fingers. Count them before finalizing.
+2. NAIL SHAPE: All nails must be uniform — same length, same shape (almond/square/oval), evenly filed
+3. NAIL COLOR: Every nail must show the SAME polish color as the product bottle. NO bare/transparent nails on the polished hand.
+4. CUTICLES: Clean, neat cuticle lines — no ragged edges or uneven borders
+5. SKIN TEXTURE: Smooth, natural skin with subtle pores — NOT waxy, plastic, or blurred
+6. FINGER PROPORTIONS: Each finger has natural proportions — joints visible, knuckle creases realistic
+7. THUMB: Clearly shorter and thicker than other fingers, positioned at natural angle
+
+📸 PREFERRED HAND POSES (easiest for AI to render correctly):
+- ✅ BEST: Back-of-hand view with fingers gently fanned — shows all 5 nails beautifully
+- ✅ GOOD: Hand resting flat on marble/surface — fingers naturally together, nails facing camera
+- ✅ GOOD: Fingertips touching chin/cheek — 3-4 nails visible, elegant pose
+- ✅ GOOD: Hand holding a small object (coffee cup, phone) — natural grip, nails visible
+- ⚠️ AVOID: Interlaced fingers, complex grips, spread fingers at extreme angles
+- ⚠️ AVOID: Palm-side view (harder to render, doesn't show nails)
+- ⚠️ AVOID: Two hands overlapping or interacting with each other
+
+🎯 NAIL POLISH APPLICATION LOOK:
+- Polish should look FRESHLY APPLIED: glossy, smooth, no bubbles, no streaks
+- Color coverage must be EVEN from cuticle to tip — no thin spots or bald patches
+- Free edge (tip) should have clean, crisp color termination
+- If gel/glossy finish: add a subtle light reflection strip on each nail
+- The nails should look "salon-quality but achievable at home" — aspirational yet realistic
+
+📐 SMALL PANEL RULE (for multi-panel layouts):
+- In small panels, show FEWER fingers (3-4) rather than full hand
+- Use WIDER shots where nail detail is visible but hand anatomy is less scrutinized
+- One beautiful close-up nail in a small panel is better than a badly rendered full hand
+`;
+
+  // 非美容产品：减少手的可见度
+  const generalHandRule = `
 🚨 HUMAN ANATOMY — CRITICAL (ZERO TOLERANCE):
 🖐️ HAND RENDERING STRATEGY — MINIMIZE HAND VISIBILITY:
 - ⚠️ PREFERRED: Avoid showing hands whenever possible. Use these alternatives:
@@ -1420,12 +1462,16 @@ If the provided headline or badge text contains any prohibited word, SKIP that t
 - Do NOT zoom into hands in small panels — small size + high detail = more visible errors
 - Prefer showing hands holding/using the product from a medium distance
 - If the panel is too small to render hands well, show the product WITHOUT hands in that panel
+`;
 
+  const commonAnatomyRules = `
 - Thumbs must be clearly distinct — shorter, thicker, opposable
 - Each finger: 3 segments with natural bending
 - Fingernails: exactly ONE per finger, natural shape
 - All body proportions natural — no extra limbs, merged fingers, distorted joints
 `;
+
+  const humanAnatomyRule = (strategy.isBeautyProduct ? beautyHandRule : generalHandRule) + commonAnatomyRules;
 
   // 产品颜色还原规则 — 基于分析结果中的颜色信息
   const colorAccuracyRule = (colors: string) => colors ? `
@@ -1449,6 +1495,13 @@ ANTI-COLOR-DRIFT RULES:
   * ⚠️ Cap/lid metallic color changing from rose gold to yellow gold or silver — THIS IS A CRITICAL FAILURE
 - CAP/LID COLOR LOCK: The cap/lid color is part of the product identity. If the reference shows a ROSE GOLD cap, it must stay ROSE GOLD in every image. Yellow gold ≠ rose gold. Silver ≠ chrome. Match the EXACT metallic tone.
 - Background and lighting choices are SECONDARY to color accuracy — if a scene's lighting would shift the product color, change the lighting, NOT the product color
+
+🎨 NAIL/BEAUTY COLOR MATCH — CRITICAL (for nail polish / beauty products):
+- The color of polished nails MUST EXACTLY MATCH the liquid color inside the bottle — they are THE SAME product
+- Do NOT darken, warm, cool, or shift the nail color vs. the bottle color. If the bottle contains a light nude/beige, the nails must show THAT EXACT light nude/beige — NOT a deeper brown, NOT a warmer tan, NOT a cooler pink
+- EVERY polished nail in EVERY image across the listing must show the SAME color. A customer seeing different nail colors in different images will think the listing is fake.
+- In the comparison image: "Ours" side nails must clearly show the product color with good coverage and gloss. "Ordinary" side must show BARE/UNPOLISHED nails (no polish at all) or clearly chipped/faded polish — the contrast must be OBVIOUS.
+- COLOR VERIFICATION: Before finalizing, compare the rendered nail color against the bottle liquid. If there is any visible difference in hue or saturation, adjust the nail color to match.
 ` : "";
 
   // 模特多样性规则
@@ -1523,12 +1576,31 @@ This product is small. If it fits the composition, showing a hand holding or pla
   const diversityRule = modelDiversityRule;
 
   const textSafeZoneRule = `
-🚨 TEXT SAFE ZONE — CRITICAL:
-- ALL text must stay inside a safe zone with at least 40px padding from every edge
-- Text must NEVER be cut off, cropped, or overflow the image boundary
-- Center text horizontally; avoid placing text in corners or at the very edge
-- Use a semi-transparent overlay behind text if needed for readability
-- If text is long, use a smaller font — do NOT let it extend beyond the safe zone
+🚨🚨🚨 TEXT SAFE ZONE — HIGHEST PRIORITY (TEXT CUTOFF = INSTANT FAIL):
+⚠️ TEXT GETTING CUT OFF IS THE #1 MOST COMMON FAILURE. FOLLOW THESE RULES EXACTLY:
+
+1. SAFE ZONE: Keep ALL text well away from image edges. Leave a generous margin (about 10% of the image width) on every side.
+   - Text can only exist within the CENTER area of the image, not near the borders.
+   - NOTHING (no text, no labels, no badges, no pixel measurements) can appear near the outer border.
+   - Do NOT render any measurement annotations, margin markers, or dimension labels on the image.
+
+2. HEADLINE PLACEMENT:
+   - Place headlines near the top of the image, CENTERED horizontally
+   - NEVER place headlines flush against the left/right edge
+   - If a headline is long (>20 characters), use a SMALLER font size to keep it within the safe center area
+
+3. BADGE/LABEL PLACEMENT:
+   - Keep badges well inward from any edge
+   - Bottom badges should not be too close to the bottom edge
+   - Side badges should stay within the center portion of the image
+
+4. VERIFICATION BEFORE FINALIZING:
+   - Check EVERY piece of text: is ANY part of ANY letter too close to ANY edge?
+   - If YES → move it inward or reduce font size
+   - Common failure: LEFT-ALIGNED headlines where the first 2-3 letters get cut off — ALWAYS center headlines or add generous left padding
+   - Do NOT render any technical annotations (pixel values, safe zone markers, margin indicators) — these are instructions for YOU, not content for the image
+
+5. If text is too long to fit in the safe area, REDUCE FONT SIZE rather than extending to the edge
 `;
 
   return imageTypes.map((imageType) => {
@@ -1766,6 +1838,7 @@ ${structureLockRule}
 🔒 Show ONLY ONE product. Keep the product identical to the reference.
 ${colorRule}
 ${spellingRule}
+${textSafeZoneRule}
 ${realisticExpectationRule}
 
 📐 CAMERA ANGLE:

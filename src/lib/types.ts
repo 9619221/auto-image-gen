@@ -222,7 +222,7 @@ export function regionToLanguage(region: SalesRegion): AnalysisLanguage {
   return map[region];
 }
 
-export type ProductMode = "single" | "bundle";
+export type ProductMode = "single" | "bundle" | "variants";
 
 export interface GenerationJob {
   imageType: ImageType;

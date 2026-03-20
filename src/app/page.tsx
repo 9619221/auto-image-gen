@@ -13,7 +13,8 @@ import ImageOrderOptimizer from "@/components/ImageOrderOptimizer";
 import { IMAGE_TYPE_ORDER, IMAGE_TYPE_LABELS, regionToLanguage } from "@/lib/types";
 import type { AnalysisResult, ImageType, ImagePlan, GenerationJob, SalesRegion, ImageScore } from "@/lib/types";
 import { generatePlans } from "@/lib/prompt-templates";
-import { Loader2, Zap, RotateCcw, ArrowRight, History, X, Type, Copy, Check } from "lucide-react";
+import BatchProcessor from "@/components/BatchProcessor";
+import { Loader2, Zap, RotateCcw, ArrowRight, History, X, Type, Copy, Check, Layers } from "lucide-react";
 
 type Step = "upload" | "review" | "plan" | "generate" | "results";
 
@@ -51,21 +52,28 @@ export default function Home() {
   // 图片评分（从 ResultGallery 回传）
   const [imageScores, setImageScores] = useState<Record<string, ImageScore>>({});
 
+  // 批量模式
+  const [batchMode, setBatchMode] = useState(false);
+
   // 历史记录
   const [showHistory, setShowHistory] = useState(false);
   const [historyList, setHistoryList] = useState<HistoryMeta[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
   // Cleanup blob URLs on unmount to prevent memory leaks
+  // 使用 ref 追踪最新的 images，避免依赖数组变化时误撤销正在使用的 blob URL
+  const imagesRef = useRef(originalImages);
+  imagesRef.current = originalImages;
   useEffect(() => {
     return () => {
-      originalImages.forEach((item) => {
+      imagesRef.current.forEach((item) => {
         if (item.previewUrl.startsWith("blob:")) {
           URL.revokeObjectURL(item.previewUrl);
         }
       });
     };
-  }, [originalImages]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const appendImagesToFormData = (formData: FormData, images: UploadImageItem[]) => {
     images.forEach((item) => {
@@ -348,6 +356,16 @@ export default function Home() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {/* 批量模式按钮 */}
+            {!batchMode && step === "upload" && (
+              <button
+                onClick={() => setBatchMode(true)}
+                className="btn-ghost flex items-center gap-2 px-4 py-2 text-sm"
+              >
+                <Layers className="w-4 h-4" />
+                批量模式
+              </button>
+            )}
             {/* 历史记录按钮 */}
             <button
               onClick={() => { setShowHistory(true); loadHistoryList(); }}
@@ -356,7 +374,7 @@ export default function Home() {
               <History className="w-4 h-4" />
               历史记录
             </button>
-            {step !== "upload" && (
+            {step !== "upload" && !batchMode && (
               <button
                 onClick={handleReset}
                 className="btn-ghost flex items-center gap-2 px-4 py-2 text-sm"
@@ -419,7 +437,14 @@ export default function Home() {
         </div>
       )}
 
-      <div className="max-w-6xl mx-auto px-6 py-4">
+      {/* 批量模式 */}
+      {batchMode && (
+        <div className="max-w-6xl mx-auto px-6 py-6">
+          <BatchProcessor onExit={() => setBatchMode(false)} />
+        </div>
+      )}
+
+      {!batchMode && <><div className="max-w-6xl mx-auto px-6 py-4">
         <div className="flex items-center gap-2 text-sm">
           {[
             { key: "upload", label: "1. 上传图片" },
@@ -643,7 +668,7 @@ export default function Home() {
             )}
           </div>
         )}
-      </div>
+      </div></>}
     </main>
   );
 }

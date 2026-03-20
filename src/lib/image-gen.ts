@@ -80,7 +80,7 @@ function extractImageBase64(content: string): string | null {
 export async function generateProductImage(
   productImages: string[],
   prompt: string,
-  productMode: "single" | "bundle" = "single",
+  productMode: "single" | "bundle" | "variants" = "single",
   imageLanguage: AnalysisLanguage = "en",
   imageType?: string
 ): Promise<string> {
@@ -94,6 +94,18 @@ export async function generateProductImage(
   if (productImages.length > 1) {
     if (productMode === "bundle") {
       multiNote = `\n\nIMPORTANT: You are given ${productImages.length} different product reference images. These products are sold together as a BUNDLE SET. ALL ${productImages.length} products MUST appear together in the generated image. Do NOT omit any product.\n\n`;
+    } else if (productMode === "variants") {
+      multiNote = `\n\nIMPORTANT: You are given ${productImages.length} reference images of the SAME product in DIFFERENT COLORS/SPECIFICATIONS. These are VARIANT OPTIONS of ONE product (e.g., same design but different colors, sizes, or finishes).
+
+VARIANT IMAGE RULES:
+- For MAIN/HERO image: Show the PRIMARY variant (first image) as the hero product. Optionally show small color swatches or thumbnails of other variants at the bottom or side.
+- For FEATURES/CLOSEUP/DIMENSIONS: Use the primary variant only. Keep focus on product features, not color differences.
+- For LIFESTYLE images: Feature the primary variant in the scene. You may subtly hint at other colors (e.g., one variant in use, others visible on a shelf nearby).
+- For PACKAGING/VALUE image: This is the BEST image to showcase ALL variants together — display all ${productImages.length} color/spec options side by side or in an attractive arrangement, with labels for each variant.
+- For COMPARISON image: Use the primary variant for the comparison.
+- For A+ CLOSING image: Show all variants together as a "Choose Your Color/Style" final display.
+
+Each variant shares the SAME shape, design, and features — they ONLY differ in color/finish/size.\n\n`;
     } else {
       multiNote = `\n\nIMPORTANT: You are given ${productImages.length} reference images of the SAME SINGLE product taken from different angles. These are NOT different products - they are multiple views of ONE product. Generate the image showing only ONE product. Do NOT duplicate the product or show multiple copies.\n\n`;
     }

@@ -20,6 +20,26 @@ function getClient() {
   return _analyzeClient;
 }
 
+/**
+ * 带重试的API调用 — 代理API经常返回429错误，自动重试
+ */
+async function callWithRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      console.error(`[analyze] attempt ${attempt + 1}/${maxRetries} failed:`, lastError.message.slice(0, 200));
+      if (attempt < maxRetries - 1) {
+        const delay = 3000 * (attempt + 1); // 3s, 6s 递增延迟
+        await new Promise(r => setTimeout(r, delay));
+      }
+    }
+  }
+  throw lastError ?? new Error("API调用失败");
+}
+
 function buildAnalysisPrompt(imageCount: number, productMode: string): string {
   let modeNote = "";
 
@@ -27,6 +47,12 @@ function buildAnalysisPrompt(imageCount: number, productMode: string): string {
     modeNote = `\n⚠️ IMPORTANT: The user uploaded ${imageCount} images, but these are ALL photos of the SAME SINGLE product from different angles. Analyze them as ONE product. productName should describe only this one product.`;
   } else if (imageCount > 1 && productMode === "bundle") {
     modeNote = `\nIMPORTANT: You see ${imageCount} images of different products. These are sold together as a BUNDLE SET. Analyze the entire set as one listing — productName should describe the bundle, sellingPoints should cover the combination value, usageScenes should show how these items work together.`;
+  } else if (imageCount > 1 && productMode === "variants") {
+    modeNote = `\n⚠️ IMPORTANT: You see ${imageCount} images of the SAME product in DIFFERENT COLORS or SPECIFICATIONS (e.g., different colors, sizes, finishes). These are VARIANTS of ONE product — they share the same design, function, and features, but differ in color/size/spec.
+- productName: describe the product itself (NOT a specific color variant)
+- colors: list ALL variant colors/specs visible across ALL images, with hex values for each (e.g., "经典黑 (Classic Black ~#1A1A1A), 玫瑰粉 (Rose Pink ~#E8A0BF), 天蓝色 (Sky Blue ~#87CEEB)")
+- sellingPoints: include "multiple color/spec options available" as a selling point
+- Treat them as ONE listing with variant options, NOT as separate products.`;
   }
 
   return `You are a professional e-commerce product analyst. Analyze the product images and extract the following information. Return ONLY valid JSON.
@@ -63,11 +89,13 @@ export async function analyzeProduct(
   }
   content.push({ type: "text", text: buildAnalysisPrompt(images.length, productMode) });
 
-  const response = await getClient().chat.completions.create({
-    model: process.env.ANALYZE_MODEL || "gemini-3.1-flash-image-preview",
-    messages: [{ role: "user", content }],
-    max_tokens: 1500,
-  });
+  const response = await callWithRetry(() =>
+    getClient().chat.completions.create({
+      model: process.env.ANALYZE_MODEL || "gemini-3.1-flash-image-preview",
+      messages: [{ role: "user", content }],
+      max_tokens: 1500,
+    })
+  );
 
   const text = response.choices[0]?.message?.content ?? "";
   const defaults: AnalysisResult = {
@@ -134,11 +162,13 @@ Usage Scenes: Describe 5 diverse, specific, vivid real-world usage scenarios.`;
 
   content.push({ type: "text", text: prompt });
 
-  const response = await getClient().chat.completions.create({
-    model: process.env.ANALYZE_MODEL || "gemini-3.1-flash-image-preview",
-    messages: [{ role: "user", content }],
-    max_tokens: 1500,
-  });
+  const response = await callWithRetry(() =>
+    getClient().chat.completions.create({
+      model: process.env.ANALYZE_MODEL || "gemini-3.1-flash-image-preview",
+      messages: [{ role: "user", content }],
+      max_tokens: 1500,
+    })
+  );
 
   const text = response.choices[0]?.message?.content ?? "";
   const defaults = {

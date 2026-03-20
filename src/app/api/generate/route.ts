@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "未提供生成方案" }, { status: 400 });
     }
 
-    const productMode = String(formData.get("productMode") || "single") as "single" | "bundle";
+    const productMode = String(formData.get("productMode") || "single") as "single" | "bundle" | "variants";
     const imageLanguage = String(formData.get("imageLanguage") || "en") as AnalysisLanguage;
     const originalImages = await filesToDataUrls(validation.files);
 
