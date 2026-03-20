@@ -45,6 +45,9 @@ export default function Home() {
   const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
 
+  // 重新生成分析字段
+  const [isRegenerating, setIsRegenerating] = useState(false);
+
   // 图片评分（从 ResultGallery 回传）
   const [imageScores, setImageScores] = useState<Record<string, ImageScore>>({});
 
@@ -164,6 +167,33 @@ export default function Home() {
       setIsProcessing(false);
     }
   }, [originalImages, productMode]);
+
+  const handleRegenerateFields = useCallback(async () => {
+    if (!analysis || originalImages.length === 0) return;
+    setIsRegenerating(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      appendImagesToFormData(formData, originalImages);
+      formData.append("analysis", JSON.stringify(analysis));
+      formData.append("productMode", productMode);
+
+      const res = await fetch("/api/regenerate-analysis", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.error) {
+        setError(`重新生成失败：${data.error}`);
+      } else {
+        setAnalysis(prev => prev ? { ...prev, ...data } : prev);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "重新生成失败");
+    } finally {
+      setIsRegenerating(false);
+    }
+  }, [analysis, originalImages, productMode]);
 
   const handleProceedToPlan = useCallback(() => {
     if (!analysis) return;
@@ -469,6 +499,8 @@ export default function Home() {
             <AnalysisResultComponent
               analysis={analysis}
               onChange={setAnalysis}
+              onRegenerate={handleRegenerateFields}
+              isRegenerating={isRegenerating}
             />
 
             <ImageTypeSelector

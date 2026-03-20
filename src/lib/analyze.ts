@@ -90,3 +90,69 @@ export async function analyzeProduct(
     defaults
   );
 }
+
+/**
+ * Regenerate derived fields (sellingPoints, targetAudience, usageScenes)
+ * based on user-edited base fields + original product images.
+ */
+export async function regenerateAnalysisFields(
+  images: string[],
+  currentAnalysis: AnalysisResult,
+  productMode: string = "single"
+): Promise<Pick<AnalysisResult, "sellingPoints" | "targetAudience" | "usageScenes">> {
+  const content: Array<{ type: "image_url"; image_url: { url: string } } | { type: "text"; text: string }> = [];
+
+  for (const img of images) {
+    content.push({ type: "image_url", image_url: { url: img } });
+  }
+
+  const prompt = `You are a professional e-commerce product analyst. The user has reviewed and corrected the base product information below. Based on these CONFIRMED facts and the product images, generate NEW selling points, target audience, and usage scenes.
+
+🚨 CRITICAL: Use the user-confirmed product info below as ground truth. Do NOT contradict it.
+
+Confirmed product info:
+- Product Name: ${currentAnalysis.productName}
+- Category: ${currentAnalysis.category}
+- Materials: ${currentAnalysis.materials}
+- Colors: ${currentAnalysis.colors}
+- Dimensions: ${currentAnalysis.estimatedDimensions}
+
+🚨 CRITICAL FORMAT: Every text field must be BILINGUAL — Chinese first, then English in parentheses.
+
+Return ONLY valid JSON:
+{
+  "sellingPoints": ["中文卖点1 (English SP1)", "中文卖点2 (English SP2)", ...],
+  "targetAudience": ["中文人群1 (English Audience 1)", "中文人群2 (English Audience 2)", "中文人群3 (English Audience 3)"],
+  "usageScenes": ["中文场景1 (English Scene 1)", "中文场景2 (English Scene 2)", ...]
+}
+
+Selling Points: Generate 3-5 core features and unique selling points that match the confirmed product name, category, and materials.
+Target Audience: Identify 3 different buyer personas who would buy this specific product.
+Usage Scenes: Describe 5 diverse, specific, vivid real-world usage scenarios.`;
+
+  content.push({ type: "text", text: prompt });
+
+  const response = await getClient().chat.completions.create({
+    model: process.env.ANALYZE_MODEL || "gemini-3.1-flash-image-preview",
+    messages: [{ role: "user", content }],
+    max_tokens: 1500,
+  });
+
+  const text = response.choices[0]?.message?.content ?? "";
+  const defaults = {
+    sellingPoints: currentAnalysis.sellingPoints,
+    targetAudience: currentAnalysis.targetAudience,
+    usageScenes: currentAnalysis.usageScenes,
+  };
+
+  const parsed = extractJSON<typeof defaults>(text, defaults);
+  if (!parsed) {
+    throw new Error("Failed to parse regenerated fields");
+  }
+
+  return {
+    sellingPoints: Array.isArray(parsed.sellingPoints) ? parsed.sellingPoints : defaults.sellingPoints,
+    targetAudience: Array.isArray(parsed.targetAudience) ? parsed.targetAudience : defaults.targetAudience,
+    usageScenes: Array.isArray(parsed.usageScenes) ? parsed.usageScenes : defaults.usageScenes,
+  };
+}

@@ -1,16 +1,20 @@
 "use client";
 
 import type { AnalysisResult as AnalysisResultType } from "@/lib/types";
-import { Package, Users, MapPin, Ruler, Palette, Sparkles, Pencil, Plus, X } from "lucide-react";
+import { Package, Users, MapPin, Ruler, Palette, Sparkles, Pencil, Plus, X, RefreshCw, Loader2 } from "lucide-react";
 
 interface AnalysisResultProps {
   analysis: AnalysisResultType;
   onChange: (analysis: AnalysisResultType) => void;
+  onRegenerate?: () => void;
+  isRegenerating?: boolean;
 }
 
 export default function AnalysisResult({
   analysis,
   onChange,
+  onRegenerate,
+  isRegenerating = false,
 }: AnalysisResultProps) {
   const updateField = <K extends keyof AnalysisResultType>(
     key: K,
@@ -46,10 +50,26 @@ export default function AnalysisResult({
           <Sparkles className="w-5 h-5 text-amber-500" />
           AI 分析结果
         </h3>
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-600 text-xs font-medium border border-amber-200">
-          <Pencil className="w-3 h-3" />
-          所有字段均可修改校准
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-600 text-xs font-medium border border-amber-200">
+            <Pencil className="w-3 h-3" />
+            所有字段均可修改校准
+          </span>
+          {onRegenerate && (
+            <button
+              onClick={onRegenerate}
+              disabled={isRegenerating}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-600 text-xs font-medium border border-indigo-200 hover:bg-indigo-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isRegenerating ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <RefreshCw className="w-3 h-3" />
+              )}
+              {isRegenerating ? "生成中..." : "AI 重新生成"}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Product Name & Category */}
@@ -119,7 +139,7 @@ export default function AnalysisResult({
       </div>
 
       {/* Selling Points */}
-      <div>
+      <div className={isRegenerating ? "opacity-50 pointer-events-none animate-pulse" : ""}>
         <div className="flex items-center justify-between mb-2">
           <label className="text-xs uppercase tracking-wide font-medium text-slate-400 flex items-center">
             <Sparkles className="w-3.5 h-3.5 mr-1" />
@@ -159,7 +179,7 @@ export default function AnalysisResult({
       </div>
 
       {/* Target Audience */}
-      <div>
+      <div className={isRegenerating ? "opacity-50 pointer-events-none animate-pulse" : ""}>
         <div className="flex items-center justify-between mb-2">
           <label className="text-xs uppercase tracking-wide font-medium text-slate-400 flex items-center">
             <Users className="w-3.5 h-3.5 mr-1" />
@@ -199,7 +219,7 @@ export default function AnalysisResult({
       </div>
 
       {/* Usage Scenes */}
-      <div>
+      <div className={isRegenerating ? "opacity-50 pointer-events-none animate-pulse" : ""}>
         <div className="flex items-center justify-between mb-2">
           <label className="text-xs uppercase tracking-wide font-medium text-slate-400 flex items-center">
             <MapPin className="w-3.5 h-3.5 mr-1" />
