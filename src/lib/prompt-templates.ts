@@ -311,6 +311,7 @@ function badgeToOpposite(badge: string): string {
     "Easy Install": "Complicated Setup",
     "Secure Fit": "Loose Connection",
     "Easy Setup": "Confusing Setup",
+    "Rated": "Unknown Spec",
     "Aluminum": "Thin Plastic",
     "Earth-Wise": "Wasteful",
     "With Lid": "No Cover",
@@ -401,15 +402,25 @@ function inferProductStrategy(analysis: AnalysisResult) {
 
   // Badges that should NOT appear on electronics/hardware products
   const hardwareBannedBadges = new Set([
+    // Jewelry / Gemstone
     "Natural", "Kyanite", "Agate", "Crystal", "Jade", "Cat-Eye",
     "Calming", "Handmade", "Polished", "Multi-Wrap", "Unisex", "Layered",
-    "Lifelike", "Realistic", "Bouquet", "Elegant", "Decor", "Ambient", "Plush", "Layered",
+    "Versatile",
+    // Home Décor / Floral
+    "Lifelike", "Realistic", "Bouquet", "Elegant", "Decor", "Ambient", "Plush",
+    // Gift (NOT appropriate for hardware/electronics)
     "Great Gift", "Gift Idea", "Gift-Ready",
+    // Beauty / Cosmetics
     "Shimmer", "Vivid Color", "True Color", "Matte",
     "Volumizing", "Breathable", "Hydrating", "UV Shield",
     "Pro Finish", "Soft Touch", "Quick Dry", "7-Day Wear",
     "Gel Finish", "Long Wear", "Pigmented", "Nail Armor",
+    // Kitchen / Food
     "Food-Safe", "Non-Stick", "Oven-Safe", "Even Cooking",
+    // Pet
+    "Pet-Safe",
+    // Too generic — prefer hardware-specific badges
+    "Stackable", "Leak-Proof", "With Lid", "Family Size",
   ]);
 
   // Match each selling point to a benefit
@@ -511,7 +522,7 @@ function inferProductStrategy(analysis: AnalysisResult) {
     : functionBadge2Raw;
 
   // Lifestyle: result headline from scene context
-  const resultHeadline = deriveResultHeadline(scene1, audience1, category, materials);
+  const resultHeadline = deriveResultHeadline(scene1, audience1, category, materials, productName);
 
   // Value: why choose this product
   const valueHeadline = deriveValueHeadline(category, productName, materials);
@@ -642,11 +653,12 @@ function getCategoryFallbacks(category: string, productName: string, materials: 
   ];
 }
 
-function deriveResultHeadline(scene: string, audience: string, category: string, materials?: string): string {
-  // Use CATEGORY + MATERIAL as primary signal
+function deriveResultHeadline(scene: string, audience: string, category: string, materials?: string, productName?: string): string {
+  // Use CATEGORY + MATERIAL + PRODUCT NAME as primary signal
   const cat = category.toLowerCase();
   const mat = (materials || "").toLowerCase();
-  const ctx2 = `${cat} ${mat}`;
+  const pn = (productName || "").toLowerCase();
+  const ctx2 = `${cat} ${mat} ${pn}`;
 
   // ⚡ Electronics / Hardware / Tools — check BEFORE jewelry (tools for jewelry ≠ jewelry)
   if (/connector|plug|socket|terminal|crimp|splice|接头|连接器|插头|插座|端子/.test(ctx2)) {
@@ -684,7 +696,7 @@ function deriveResultHeadline(scene: string, audience: string, category: string,
   // Generic jewelry fallback — randomize
   // Use \b word boundary to avoid matching "wiring", "spring" etc.
   // Only match "accessori" if NOT electronics/hardware context
-  if (/\bring\b|(?<!electronic.{0,3})(?<!electric.{0,3})\bjewel|necklace|bracelet|\bearring\b|pendant|charm|饰品|戒指|项链|手链|耳环/.test(cat) && !/electronic|electric|connector|cable|wire|tool|hardware|solder|pcb|circuit|电子|电气|工具|五金|焊/.test(cat)) {
+  if (/\bring\b|(?<!electronic.{0,3})(?<!electric.{0,3})\bjewel|necklace|bracelet|\bearring\b|pendant|charm|饰品|戒指|项链|手链|耳环/.test(cat) && !/electronic|electric|connector|cable|wire|tool|hardware|solder|pcb|circuit|pin|plug|socket|terminal|fan|adapter|电子|电气|工具|五金|焊|连接器|接头|插头|插座|端子/.test(ctx2)) {
     const jewelryHeadlines = ["Wear Your Story", "Everyday Elegance", "Your Signature Look", "Simply Beautiful"];
     return jewelryHeadlines[Math.floor(Math.random() * jewelryHeadlines.length)];
   }
