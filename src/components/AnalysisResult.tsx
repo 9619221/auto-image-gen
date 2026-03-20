@@ -50,26 +50,10 @@ export default function AnalysisResult({
           <Sparkles className="w-5 h-5 text-amber-500" />
           AI 分析结果
         </h3>
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-600 text-xs font-medium border border-amber-200">
-            <Pencil className="w-3 h-3" />
-            所有字段均可修改校准
-          </span>
-          {onRegenerate && (
-            <button
-              onClick={onRegenerate}
-              disabled={isRegenerating}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-600 text-xs font-medium border border-indigo-200 hover:bg-indigo-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isRegenerating ? (
-                <Loader2 className="w-3 h-3 animate-spin" />
-              ) : (
-                <RefreshCw className="w-3 h-3" />
-              )}
-              {isRegenerating ? "生成中..." : "AI 重新生成"}
-            </button>
-          )}
-        </div>
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-600 text-xs font-medium border border-amber-200">
+          <Pencil className="w-3 h-3" />
+          所有字段均可修改校准
+        </span>
       </div>
 
       {/* Product Name & Category */}
@@ -137,6 +121,29 @@ export default function AnalysisResult({
           />
         </div>
       </div>
+
+      {/* Divider: base fields above, AI-derived fields below */}
+      {onRegenerate && (
+        <div className="relative border-t border-dashed border-slate-200 pt-4">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-slate-400">
+              以下字段由 AI 根据上方基础信息自动生成，修改上方信息后可点击重新生成
+            </p>
+            <button
+              onClick={onRegenerate}
+              disabled={isRegenerating}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 text-sm font-medium border border-indigo-200 hover:bg-indigo-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+            >
+              {isRegenerating ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="w-3.5 h-3.5" />
+              )}
+              {isRegenerating ? "AI 重新生成中..." : "AI 重新生成"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Selling Points */}
       <div className={isRegenerating ? "opacity-50 pointer-events-none animate-pulse" : ""}>
