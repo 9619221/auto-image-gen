@@ -860,6 +860,30 @@ const mainAngles = [
   "from a dynamic low angle that makes the product look impressive",
 ];
 
+// 每张图使用不同角度，避免整套8张看起来一样
+const featuresAngles = [
+  "Product tilted 15-20° to the left, creating a dynamic lean — NOT straight-on",
+  "Product shot from a 45° overhead bird's-eye perspective, showing the top cap and front label",
+  "Product at a dramatic 3/4 angle from the lower right, looking up at it — makes it feel powerful",
+];
+
+const closeupAngles = [
+  "Product at a steep 60° side angle, showing the profile/silhouette and label edge",
+  "Product lying on its side at a natural angle, cap pointing toward camera",
+  "Product from directly above (top-down), cap removed, showing the bottle opening and color inside",
+];
+
+const dimensionsAngles = [
+  "Product at a clean 3/4 angle so all three dimensions (height, width, depth) are visible simultaneously",
+  "Product slightly rotated 30° to show both the front face and one side face clearly",
+];
+
+const valueAngles = [
+  "Product from a low hero angle (camera at table level, looking slightly up) — makes product feel premium and important",
+  "Product at an elegant 45° angle on a reflective surface, showing the bottle from a fresh perspective",
+  "Product shot from the side at eye-level, showing the profile silhouette — different from every other image in the set",
+];
+
 const mainLighting = [
   "Professional studio lighting with soft, even illumination and subtle rim light",
   "Clean butterfly lighting with a gentle gradient shadow beneath the product",
@@ -1274,6 +1298,10 @@ CONCEPT:
 - The headline names the pain point the customer recognizes from daily life
 - The customer should feel: "Yes, that's exactly my problem — and this product fixes it!"
 
+📐 CAMERA ANGLE — MUST BE DIFFERENT FROM MAIN IMAGE:
+- ${pickRandom(featuresAngles)}
+- ⚠️ Do NOT use the same straight-on front-facing angle as the main/hero image — this image must look visually DISTINCT
+
 VISUAL STORYTELLING:
 - Show a clear problem→solution visual narrative
 - Product is the HERO — it's the answer to the problem
@@ -1376,6 +1404,10 @@ CONCEPT:
 - Only the product and its REAL components/accessories should appear
 - Use camera zoom/crop to show detail, NOT illustrated props
 
+📐 CAMERA ANGLE — MUST BE DIFFERENT FROM OTHER IMAGES:
+- ${pickRandom(closeupAngles)}
+- ⚠️ Do NOT use the same straight-on front-facing angle as the main image
+
 BACKGROUND:
 - ${pickRandom(closeupBackgrounds)}
 - Do NOT use white fur, fluffy fabric, or pet-hair-like surfaces
@@ -1413,6 +1445,10 @@ ${structureLockRule}
 ${colorRule}
 ${spellingRule}
 ${realisticExpectationRule}
+
+📐 CAMERA ANGLE:
+- ${pickRandom(dimensionsAngles)}
+- A 3/4 angle is PREFERRED for dimensions images because it shows height, width, AND depth simultaneously
 
 LAYOUT:
 - Minimal white or pale gray background
@@ -1541,6 +1577,10 @@ ${spellingRule}
 ${colorRule}
 ${getHandInFrameRule("packaging")}
 🔒 Show only the actual product from the reference.
+
+📐 CAMERA ANGLE — MUST BE DIFFERENT FROM OTHER IMAGES:
+- ${pickRandom(valueAngles)}
+- ⚠️ Do NOT use the same straight-on front-facing angle — each image in the listing set must show the product from a UNIQUE perspective
 
 GOAL:
 - Show why THIS product beats the generic alternatives
