@@ -230,7 +230,7 @@ const BENEFIT_MAP: BenefitMatch[] = [
     painPoint: "Reliable Connection", benefit: "Secure Fit Every Time", badge: "Secure Fit" },
   { pattern: /easy.?install|plug.?and.?play|plug.?n.?play|snap.?fit|quick.?connect|tool.?free/i,
     painPoint: "Quick & Easy Install", benefit: "Plug & Play Setup", badge: "Easy Install" },
-  { pattern: /awg|gauge|amp|volt|watt|rated|current.?capacity/i,
+  { pattern: /\bawg\b|\bgauge\b|\bamp\b|\bvolt\b|\bwatt\b|current.?capacity|\brated\s+(?:voltage|current|power|amperage)/i,
     painPoint: "Right Spec for the Job", benefit: "Proper Rating", badge: "Rated" },
   // Gift / gifting
   { pattern: /gift|present|occasion|birthday|holiday|christmas/i,
@@ -246,7 +246,7 @@ function badgeToOpposite(badge: string): string {
     // Durability / Strength
     "Extra Sturdy": "Flimsy Build",
     "Durable": "Breaks Easily",
-    "Premium": "Cheap Material",
+    "Premium": "Low-Grade Build",
     "Polished": "Rough Finish",
     // Speed / Drying
     "Quick Dry": "Slow Dry Time",
@@ -312,6 +312,7 @@ function badgeToOpposite(badge: string): string {
     "Secure Fit": "Loose Connection",
     "Easy Setup": "Confusing Setup",
     "Rated": "Unknown Spec",
+    "Pro Grade": "Amateur Quality",
     "Aluminum": "Thin Plastic",
     "Earth-Wise": "Wasteful",
     "With Lid": "No Cover",
@@ -592,7 +593,7 @@ function getCategoryFallbacks(category: string, productName: string, materials: 
   if (/connector|cable|wire|adapter|plug|socket|terminal|switch|circuit|pcb|led|module|electronic|electric|tool|hardware|motor|relay|fuse|crimp|solder|helping.?hand|third.?hand|magnif|clamp|vise|vice|workbench|work.?station|plier|wrench|screwdriver|drill|repair|station|接头|连接器|插头|电|焊|端子|工具|五金|钳|扳手|螺丝刀|放大镜/.test(ctx)) {
     return [
       { pattern: /^$/, painPoint: "Built Tough", benefit: "Durable Construction", badge: "Extra Sturdy" },
-      { pattern: /^$/, painPoint: "Stock Up & Save", benefit: "Bulk Pack Value", badge: "Bulk Value" },
+      { pattern: /^$/, painPoint: "Pro-Level Precision", benefit: "Professional Grade Tool", badge: "Pro Grade" },
       { pattern: /^$/, painPoint: "Quick & Easy Setup", benefit: "Ready to Use", badge: "Easy Setup" },
       { pattern: /^$/, painPoint: "Reliable Performance", benefit: "Secure Fit Every Time", badge: "Secure Fit" },
     ];
