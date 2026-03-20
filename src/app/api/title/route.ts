@@ -13,7 +13,7 @@ function getClient() {
   _titleClient = new OpenAI({
     apiKey,
     baseURL: process.env.ANALYZE_BASE_URL,
-    timeout: 30_000,
+    timeout: 120_000,
   });
   return _titleClient;
 }

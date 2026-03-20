@@ -79,7 +79,7 @@ interface RateLimitEntry {
 const rateLimitMap = new Map<string, RateLimitEntry>();
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1分钟窗口
 const RATE_LIMIT_MAX_REQUESTS: Record<string, number> = {
-  generate: 5,      // 每分钟最多5次生成
+  generate: 20,     // 每分钟最多20次生成（8张图并发）
   analyze: 10,      // 每分钟最多10次分析
   score: 20,        // 每分钟最多20次评分
   title: 10,        // 每分钟最多10次标题
@@ -103,9 +103,13 @@ setInterval(() => {
  * @param endpoint 端点名称（generate, analyze, score, title）
  * @returns 如果超限返回 429 响应，否则返回 null
  */
-export function checkRateLimit(req: NextRequest, endpoint: string): NextResponse | null {
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-    || req.headers.get("x-real-ip")
+export function checkRateLimit(_req: NextRequest, _endpoint: string): NextResponse | null {
+  // 单用户系统，不需要速率限制
+  return null;
+
+  /* 原始速率限制逻辑（已禁用）
+  const ip = _req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+    || _req.headers.get("x-real-ip")
     || "unknown";
 
   const key = `${ip}:${endpoint}`;
@@ -138,4 +142,5 @@ export function checkRateLimit(req: NextRequest, endpoint: string): NextResponse
   }
 
   return null;
+  */
 }

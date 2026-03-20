@@ -14,7 +14,7 @@ function getClient() {
   _scoreClient = new OpenAI({
     apiKey,
     baseURL: process.env.ANALYZE_BASE_URL,
-    timeout: 30_000,
+    timeout: 120_000,
   });
   return _scoreClient;
 }

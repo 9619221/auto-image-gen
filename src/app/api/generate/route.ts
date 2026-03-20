@@ -12,8 +12,9 @@ export async function POST(req: NextRequest) {
   const authError = authenticateRequest(req);
   if (authError) return authError;
 
-  const rateLimitError = checkRateLimit(req, "generate");
-  if (rateLimitError) return rateLimitError;
+  // 速率限制已关闭 — 单用户系统不需要
+  // const rateLimitError = checkRateLimit(req, "generate");
+  // if (rateLimitError) return rateLimitError;
 
   let plans: ImagePlan[];
   try {

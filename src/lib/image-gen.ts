@@ -57,7 +57,7 @@ function getClient() {
   _genClient = new OpenAI({
     apiKey,
     baseURL: process.env.GENERATE_BASE_URL,
-    timeout: 120_000, // 2分钟超时
+    timeout: 300_000, // 5分钟超时
   });
   return _genClient;
 }

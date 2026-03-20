@@ -13,7 +13,7 @@ function getClient() {
   _analyzeClient = new OpenAI({
     apiKey,
     baseURL: process.env.ANALYZE_BASE_URL,
-    timeout: 60_000, // 1分钟超时
+    timeout: 300_000, // 5分钟超时
   });
   return _analyzeClient;
 }
