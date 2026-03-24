@@ -21,6 +21,8 @@ export default function ImageTypeSelector({
     packaging: '差异化价值',
     comparison: '我们 vs 普通产品',
     lifestyle2: 'A+多场景收束',
+    scene_a: '核价场景A',
+    scene_b: '核价场景B',
   };
 
   const toggle = (type: ImageType) => {

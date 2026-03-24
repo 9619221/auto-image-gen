@@ -5,6 +5,7 @@ import { geminiFetch } from "./gemini-fetch";
 
 // 单例客户端
 let _analyzeClient: OpenAI | null = null;
+export function resetAnalyzeClient() { _analyzeClient = null; }
 function getClient() {
   if (_analyzeClient) return _analyzeClient;
   const apiKey = process.env.ANALYZE_API_KEY;
@@ -68,14 +69,33 @@ Return ONLY valid JSON with this structure:
   "materials": "中文材质 (English Material)",
   "colors": "精确颜色描述，包含近似hex色值 (Precise color with approximate hex. e.g., '裸粉色 (Dusty Rose Pink ~#D4A0A0), 玫瑰金瓶盖 (Rose Gold Cap ~#B76E79)')",
   "targetAudience": ["中文人群1 (English Audience 1)", "中文人群2 (English Audience 2)", "中文人群3 (English Audience 3)"],
-  "usageScenes": ["中文场景1 (English Scene 1)", "中文场景2 (English Scene 2)", "中文场景3 (English Scene 3)"],
+  "usageScenes": ["中文场景1 (English Scene 1)", "中文场景2 (English Scene 2)", "中文场景3 (English Scene 3)", "中文场景4 (English Scene 4)"],
   "estimatedDimensions": "尺寸 (e.g., 30 x 20 x 15 cm / 11.8 x 7.9 x 5.9 in)",
+  "creativeBriefs": {
+    "main": "English description of the ideal main/hero image visual concept for THIS specific product",
+    "features": "English description of how to best showcase THIS product's key features visually",
+    "closeup": "English description of what detail/texture/mechanism to zoom into for THIS product",
+    "dimensions": "English description of the best way to show size/scale for THIS product",
+    "lifestyle": "English description of the ideal lifestyle scene for THIS product",
+    "packaging": "English description of how to show THIS product's unique value proposition",
+    "comparison": "English description of what makes THIS product visually superior to competitors",
+    "lifestyle2": "English description of a multi-scene layout concept for THIS product"
+  }
 }
 
 Colors: Describe the PRECISE product colors with approximate hex values. Include all distinct color zones (body color, cap/lid color, accent colors). This is CRITICAL — these colors will be used to ensure color consistency across 8 generated listing images.
 Selling Points: Extract 3-5 core features, advantages, and unique selling points.
 Target Audience: Identify 3 different buyer personas.
-Usage Scenes: Describe 5 diverse, specific, vivid real-world usage scenarios (e.g., "忙碌的上班族下班回家后在玄关桌上整理钥匙和钱包 (A busy professional organizing keys and wallet on the entryway table after coming home)").`;
+Usage Scenes: Describe 5 diverse, specific, vivid real-world usage scenarios (e.g., "忙碌的上班族下班回家后在玄关桌上整理钥匙和钱包 (A busy professional organizing keys and wallet on the entryway table after coming home)").
+Creative Briefs: For EACH image type, describe a UNIQUE visual concept tailored specifically to THIS product. Do NOT use generic templates — think like a professional product photographer designing a custom shoot for this exact product. Consider: what makes this product unique? What visual story would sell it best? What would a top Amazon seller's listing look like for this product?
+- main: hero shot concept (angle, lighting style, any props or context)
+- features: what specific features to highlight and HOW to visualize them (e.g., for a wrist exerciser: show spring mechanism + muscle diagram overlay; for a water bottle: show insulation layers cutaway)
+- closeup: the most compelling detail to zoom into (e.g., texture, mechanism, craftsmanship)
+- dimensions: the most intuitive size reference for this product (e.g., vs a hand, vs common objects, technical blueprint style)
+- lifestyle: the single most compelling usage scenario that would make someone click "buy"
+- packaging: what differentiates this product — show the VALUE visually
+- comparison: what specific visual differences between this and cheap alternatives
+- lifestyle2: a multi-panel concept showing product versatility`;
 }
 
 export async function analyzeProduct(
@@ -93,7 +113,7 @@ export async function analyzeProduct(
     getClient().chat.completions.create({
       model: process.env.ANALYZE_MODEL || "gemini-3.1-flash-image-preview",
       messages: [{ role: "user", content }],
-      max_tokens: 1500,
+      max_tokens: 3000,
     })
   );
 
@@ -107,6 +127,7 @@ export async function analyzeProduct(
     targetAudience: [],
     usageScenes: [],
     estimatedDimensions: "",
+    creativeBriefs: {},
   };
 
   const parsed = extractJSON<AnalysisResult>(text, defaults);
@@ -153,7 +174,7 @@ Return ONLY valid JSON:
 {
   "sellingPoints": ["中文卖点1 (English SP1)", "中文卖点2 (English SP2)", ...],
   "targetAudience": ["中文人群1 (English Audience 1)", "中文人群2 (English Audience 2)", "中文人群3 (English Audience 3)"],
-  "usageScenes": ["中文场景1 (English Scene 1)", "中文场景2 (English Scene 2)", ...]
+  "usageScenes": ["中文场景1 (English Scene 1)", "中文场景2 (English Scene 2)", "中文场景3 (English Scene 3)", "中文场景4 (English Scene 4)"]
 }
 
 Selling Points: Generate 3-5 core features and unique selling points that match the confirmed product name, category, and materials.

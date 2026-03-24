@@ -523,7 +523,13 @@ export default function Home() {
 
             <AnalysisResultComponent
               analysis={analysis}
-              onChange={setAnalysis}
+              onChange={(valOrFn) => {
+                if (typeof valOrFn === "function") {
+                  setAnalysis((prev) => prev ? valOrFn(prev) : prev);
+                } else {
+                  setAnalysis(valOrFn);
+                }
+              }}
               onRegenerate={handleRegenerateFields}
               isRegenerating={isRegenerating}
             />

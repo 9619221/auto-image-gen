@@ -6,7 +6,9 @@ export type ImageType =
   | "lifestyle"
   | "packaging"
   | "lifestyle2"
-  | "comparison";
+  | "comparison"
+  | "scene_a"
+  | "scene_b";
 
 export const IMAGE_TYPE_LABELS: Record<ImageType, string> = {
   main: "主图（Hero）",
@@ -17,6 +19,8 @@ export const IMAGE_TYPE_LABELS: Record<ImageType, string> = {
   packaging: "差异化价值图",
   lifestyle2: "A+ 收束图",
   comparison: "对比优势图",
+  scene_a: "核价场景图A",
+  scene_b: "核价场景图B",
 };
 
 export const IMAGE_TYPE_ORDER: ImageType[] = [
@@ -28,6 +32,8 @@ export const IMAGE_TYPE_ORDER: ImageType[] = [
   "packaging",
   "comparison",
   "lifestyle2",
+  "scene_a",
+  "scene_b",
 ];
 
 export interface AnalysisResult {
@@ -39,6 +45,8 @@ export interface AnalysisResult {
   targetAudience: string[];
   usageScenes: string[];
   estimatedDimensions: string;
+  /** AI-generated creative briefs per image type — custom visual concepts tailored to this specific product */
+  creativeBriefs?: Record<string, string>;
 }
 
 export interface ImagePlan {

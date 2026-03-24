@@ -49,6 +49,7 @@ async function enforceWhiteBackground(dataUrl: string): Promise<string> {
 
 // 单例客户端 — 避免每次请求重新创建
 let _genClient: OpenAI | null = null;
+export function resetGenerateClient() { _genClient = null; }
 function getClient() {
   if (_genClient) return _genClient;
   const apiKey = process.env.GENERATE_API_KEY;

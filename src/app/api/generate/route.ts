@@ -6,7 +6,7 @@ import { validateUploadedFiles } from "@/lib/validate-upload";
 import { authenticateRequest, checkRateLimit } from "@/lib/api-auth";
 import type { ImagePlan, AnalysisLanguage } from "@/lib/types";
 
-const CONCURRENCY = 8;
+const CONCURRENCY = 10;
 
 export async function POST(req: NextRequest) {
   const authError = authenticateRequest(req);

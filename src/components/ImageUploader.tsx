@@ -77,6 +77,20 @@ export default function ImageUploader({
 
   return (
     <div className="w-full space-y-4">
+      {/* Hidden file input — always mounted so ref works after first upload */}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="sr-only"
+        onChange={(e) => {
+          if (e.target.files) addFiles(e.target.files);
+          e.target.value = "";
+        }}
+        disabled={isProcessing}
+      />
+
       {!hasImages && (
         <div
           className={`relative flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-2xl transition-all border-[var(--color-border-default)] hover:border-indigo-400 bg-gradient-to-b from-[var(--color-accent-subtle)] to-transparent ${
@@ -104,18 +118,6 @@ export default function ImageUploader({
               选择图片
             </button>
           </div>
-          <input
-            ref={inputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            className="sr-only"
-            onChange={(e) => {
-              if (e.target.files) addFiles(e.target.files);
-              e.target.value = "";
-            }}
-            disabled={isProcessing}
-          />
         </div>
       )}
 

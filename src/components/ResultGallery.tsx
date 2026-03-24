@@ -2,10 +2,10 @@
 
 import { IMAGE_TYPE_LABELS } from "@/lib/types";
 import type { GenerationJob, ImagePlan, ImageScore } from "@/lib/types";
-import { Download, Loader2, AlertCircle, RefreshCw, Star, ChevronDown, ChevronUp } from "lucide-react";
+import { Download, Loader2, AlertCircle, RefreshCw, Star, ChevronDown, ChevronUp, MessageSquarePlus, X, Send } from "lucide-react";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface ResultGalleryProps {
   jobs: GenerationJob[];
@@ -63,6 +63,10 @@ export default function ResultGallery({
   const [scoring, setScoring] = useState<Set<string>>(new Set());
   const [expandedScore, setExpandedScore] = useState<string | null>(null);
   const [scoringAll, setScoringAll] = useState(false);
+  // 重绘提示词
+  const [regenPromptFor, setRegenPromptFor] = useState<string | null>(null); // imageType showing prompt input
+  const [regenPromptText, setRegenPromptText] = useState("");
+  const regenInputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (onScoresChange && Object.keys(scores).length > 0) {
@@ -95,20 +99,33 @@ export default function ResultGallery({
     saveAs(blob, `${productName}-listing-images.zip`);
   };
 
-  const handleRegenerate = async (job: GenerationJob) => {
+  const handleRegenerate = async (job: GenerationJob, customPrompt?: string) => {
     if (!plans || !originalImages || !onJobUpdate) return;
     const plan = plans.find((p) => p.imageType === job.imageType);
     if (!plan) return;
 
     setRegenerating((prev) => new Set(prev).add(job.imageType));
+    setRegenPromptFor(null);
+    setRegenPromptText("");
     onJobUpdate(job.imageType, { status: "generating", error: undefined });
 
-    // 如果有评分建议，注入到 prompt 中指导重新生成
-    const jobScore = scores[job.imageType];
+    // 注入自定义提示词和评分建议
     let enhancedPlan = plan;
+    const extras: string[] = [];
+
+    // 用户自定义重绘提示词
+    if (customPrompt && customPrompt.trim()) {
+      extras.push(`\n\n🎯 USER INSTRUCTIONS FOR REGENERATION (HIGHEST PRIORITY):\n${customPrompt.trim()}\nYou MUST follow these instructions precisely.`);
+    }
+
+    // 评分建议
+    const jobScore = scores[job.imageType];
     if (jobScore && jobScore.suggestions.length > 0) {
-      const feedbackBlock = `\n\n⚠️ CRITICAL IMPROVEMENTS (from previous attempt review):\n${jobScore.suggestions.map((s, i) => `${i + 1}. ${s}`).join("\n")}\nYou MUST address ALL the above issues in this new generation.`;
-      enhancedPlan = { ...plan, prompt: plan.prompt + feedbackBlock };
+      extras.push(`\n\n⚠️ CRITICAL IMPROVEMENTS (from previous attempt review):\n${jobScore.suggestions.map((s, i) => `${i + 1}. ${s}`).join("\n")}\nYou MUST address ALL the above issues in this new generation.`);
+    }
+
+    if (extras.length > 0) {
+      enhancedPlan = { ...plan, prompt: plan.prompt + extras.join("") };
     }
 
     try {
@@ -327,8 +344,59 @@ export default function ResultGallery({
                 </div>
               )}
 
+              {/* 重绘提示词输入框 */}
+              {regenPromptFor === job.imageType && (
+                <div className="absolute inset-0 z-20 bg-black/70 backdrop-blur-sm flex flex-col justify-end p-3 rounded-xl">
+                  <div className="bg-white rounded-xl p-3 shadow-xl space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-slate-700 flex items-center gap-1">
+                        <MessageSquarePlus className="w-3.5 h-3.5 text-indigo-500" />
+                        重绘提示词
+                      </span>
+                      <button
+                        onClick={() => { setRegenPromptFor(null); setRegenPromptText(""); }}
+                        className="p-1 hover:bg-slate-100 rounded-lg transition-colors"
+                      >
+                        <X className="w-3.5 h-3.5 text-slate-400" />
+                      </button>
+                    </div>
+                    <textarea
+                      ref={regenInputRef}
+                      value={regenPromptText}
+                      onChange={(e) => setRegenPromptText(e.target.value)}
+                      placeholder="输入修改要求，如：背景换成蓝色、手部更自然、产品放大一点..."
+                      className="w-full text-xs border border-slate-200 rounded-lg p-2 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400"
+                      rows={3}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleRegenerate(job, regenPromptText);
+                        }
+                      }}
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleRegenerate(job)}
+                        className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 text-xs bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        直接重绘
+                      </button>
+                      <button
+                        onClick={() => handleRegenerate(job, regenPromptText)}
+                        disabled={!regenPromptText.trim()}
+                        className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 text-xs bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors disabled:opacity-50"
+                      >
+                        <Send className="w-3 h-3" />
+                        带提示重绘
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* 操作按钮 */}
-              {(job.status === "done" || job.status === "error") && (
+              {(job.status === "done" || job.status === "error") && regenPromptFor !== job.imageType && (
                 <div className="absolute bottom-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                   {/* 评分按钮 */}
                   {job.status === "done" && !jobScore && (
@@ -345,13 +413,17 @@ export default function ResultGallery({
                       )}
                     </button>
                   )}
-                  {/* 重新生成按钮 */}
+                  {/* 重新生成按钮（带提示词） */}
                   {plans && onJobUpdate && (
                     <button
-                      onClick={() => handleRegenerate(job)}
+                      onClick={() => {
+                        setRegenPromptFor(job.imageType);
+                        setRegenPromptText("");
+                        setTimeout(() => regenInputRef.current?.focus(), 100);
+                      }}
                       disabled={regenerating.has(job.imageType)}
                       className="p-2 bg-white/90 backdrop-blur-sm rounded-xl shadow-lg hover:bg-indigo-50 transition-colors"
-                      title="重新生成此图"
+                      title="重新生成此图（可添加提示词）"
                     >
                       <RefreshCw className={`w-4 h-4 text-indigo-600 ${regenerating.has(job.imageType) ? "animate-spin" : ""}`} />
                     </button>
