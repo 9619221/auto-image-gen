@@ -4,7 +4,9 @@ import type { AnalysisLanguage } from "./types";
 import { LANGUAGE_ENGLISH_NAMES } from "./types";
 import { geminiFetch } from "./gemini-fetch";
 
-const TARGET_SIZE = 800;
+let TARGET_SIZE = 800;
+
+export function setTargetSize(size: number) { TARGET_SIZE = size; }
 
 async function resizeToTarget(dataUrl: string, useJpeg = false): Promise<string> {
   const base64Match = dataUrl.match(/^data:image\/([^;]+);base64,(.+)$/);
@@ -13,9 +15,18 @@ async function resizeToTarget(dataUrl: string, useJpeg = false): Promise<string>
   const base64Data = base64Match[2];
   const buffer = Buffer.from(base64Data, "base64");
 
+  // 获取原始尺寸，判断是否接近正方形
+  const metadata = await sharp(buffer).metadata();
+  const w = metadata.width || TARGET_SIZE;
+  const h = metadata.height || TARGET_SIZE;
+  const ratio = Math.max(w, h) / Math.min(w, h);
+
+  // 如果比例接近1:1（误差<15%），用contain保持完整内容；否则用cover裁切
+  const fit = ratio < 1.15 ? "contain" : "cover";
   let pipeline = sharp(buffer).resize(TARGET_SIZE, TARGET_SIZE, {
-    fit: "contain",
+    fit: fit as "contain" | "cover",
     background: { r: 255, g: 255, b: 255, alpha: 1 },
+    position: "centre",
   });
 
   if (useJpeg) {
@@ -136,7 +147,7 @@ Each variant shares the SAME shape, design, and features — they ONLY differ in
 
 3. NO BRAND LOGOS — Do NOT include real brand names/logos (Coca-Cola, Nike, Apple, etc.). Use generic unbranded items only.
 
-4. IMAGE SIZE — Generate a SQUARE 1:1 aspect ratio image (800×800 pixels). Do NOT generate rectangular, portrait, or landscape images.
+4. IMAGE SIZE — Generate a SQUARE 1:1 aspect ratio image (${TARGET_SIZE}×${TARGET_SIZE} pixels). Do NOT generate rectangular, portrait, or landscape images.
 
 5. PRODUCT CONSISTENCY — The generated product MUST be IDENTICAL to the reference photo:
    - Same shape, same color, same proportions, same details

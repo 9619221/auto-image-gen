@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateProductImage } from "@/lib/image-gen";
+import { generateProductImage, setTargetSize } from "@/lib/image-gen";
 import { validatePlan } from "@/lib/generation-guard";
 import { filesToDataUrls } from "@/lib/server-image";
 import { validateUploadedFiles } from "@/lib/validate-upload";
@@ -32,6 +32,9 @@ export async function POST(req: NextRequest) {
 
     const productMode = String(formData.get("productMode") || "single") as "single" | "bundle" | "variants";
     const imageLanguage = String(formData.get("imageLanguage") || "en") as AnalysisLanguage;
+    const imageSizeStr = String(formData.get("imageSize") || "800x800");
+    const sizeNum = parseInt(imageSizeStr.split("x")[0]) || 800;
+    setTargetSize(sizeNum);
     const originalImages = await filesToDataUrls(validation.files);
 
     // Capture abort signal for client disconnect

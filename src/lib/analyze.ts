@@ -71,6 +71,7 @@ Return ONLY valid JSON with this structure:
   "targetAudience": ["中文人群1 (English Audience 1)", "中文人群2 (English Audience 2)", "中文人群3 (English Audience 3)"],
   "usageScenes": ["中文场景1 (English Scene 1)", "中文场景2 (English Scene 2)", "中文场景3 (English Scene 3)", "中文场景4 (English Scene 4)"],
   "estimatedDimensions": "尺寸 (e.g., 30 x 20 x 15 cm / 11.8 x 7.9 x 5.9 in)",
+  "productForm": "2d_flat or 3d_object — use '2d_flat' for stickers, decals, cards, prints, posters, labels, patches, tattoos, wall art, flat magnets, bookmarks, or any THIN FLAT item. Use '3d_object' for everything else (bottles, tools, toys, electronics, clothing, etc.)",
   "creativeBriefs": {
     "main": "English description of the ideal main/hero image visual concept for THIS specific product",
     "features": "English description of how to best showcase THIS product's key features visually",

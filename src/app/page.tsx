@@ -11,7 +11,8 @@ import ResultGallery from "@/components/ResultGallery";
 import MobilePreview from "@/components/MobilePreview";
 import ImageOrderOptimizer from "@/components/ImageOrderOptimizer";
 import { IMAGE_TYPE_ORDER, IMAGE_TYPE_LABELS, regionToLanguage } from "@/lib/types";
-import type { AnalysisResult, ImageType, ImagePlan, GenerationJob, SalesRegion, ImageScore } from "@/lib/types";
+import type { AnalysisResult, ImageType, ImagePlan, GenerationJob, SalesRegion, ImageSize, ImageScore } from "@/lib/types";
+import { IMAGE_SIZE_OPTIONS } from "@/lib/types";
 import { generatePlans } from "@/lib/prompt-templates";
 import BatchProcessor from "@/components/BatchProcessor";
 import { Loader2, Zap, RotateCcw, ArrowRight, History, X, Type, Copy, Check, Layers } from "lucide-react";
@@ -39,6 +40,7 @@ export default function Home() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [productMode, setProductMode] = useState<ProductMode>("single");
   const [salesRegion, setSalesRegion] = useState<SalesRegion>("us");
+  const [imageSize, setImageSize] = useState<ImageSize>("800x800");
   const [error, setError] = useState<string | null>(null);
 
   // 标题生成
@@ -205,10 +207,10 @@ export default function Home() {
 
   const handleProceedToPlan = useCallback(() => {
     if (!analysis) return;
-    const imagePlans = generatePlans(analysis, selectedTypes, salesRegion);
+    const imagePlans = generatePlans(analysis, selectedTypes, salesRegion, imageSize, productMode);
     setPlans(imagePlans);
     setStep("plan");
-  }, [analysis, selectedTypes, salesRegion]);
+  }, [analysis, selectedTypes, salesRegion, imageSize]);
 
   const handleGenerate = useCallback(async () => {
     if (originalImages.length === 0 || plans.length === 0) return;
@@ -246,6 +248,7 @@ export default function Home() {
       formData.append("productMode", productMode);
       formData.append("imageLanguage", regionToLanguage(salesRegion));
       formData.append("salesRegion", salesRegion);
+      formData.append("imageSize", imageSize);
 
       const response = await fetch("/api/generate", {
         method: "POST",
@@ -538,6 +541,27 @@ export default function Home() {
               selected={selectedTypes}
               onChange={setSelectedTypes}
             />
+
+            {/* 图片尺寸选择 */}
+            <div className="premium-card p-4">
+              <p className="text-sm text-slate-700 font-semibold mb-2">📐 输出图片尺寸</p>
+              <div className="flex gap-2">
+                {IMAGE_SIZE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setImageSize(opt.value)}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium border transition-all ${
+                      imageSize === opt.value
+                        ? "bg-indigo-50 border-indigo-400 text-indigo-700 shadow-sm"
+                        : "border-slate-200 text-slate-500 hover:border-slate-300"
+                    }`}
+                  >
+                    <span className="font-bold">{opt.label}</span>
+                    <span className="text-xs ml-1 opacity-70">{opt.description}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
 
             <div className="flex justify-center">
               <button

@@ -45,6 +45,8 @@ export interface AnalysisResult {
   targetAudience: string[];
   usageScenes: string[];
   estimatedDimensions: string;
+  /** Product physical form: "2d_flat" for stickers/cards/prints/posters, "3d_object" for physical products */
+  productForm?: "2d_flat" | "3d_object";
   /** AI-generated creative briefs per image type — custom visual concepts tailored to this specific product */
   creativeBriefs?: Record<string, string>;
 }
@@ -56,6 +58,17 @@ export interface ImagePlan {
   prompt: string;
   validationNotes?: string[];
 }
+
+// ===== Image Size System =====
+export type ImageSize = "800x800" | "1000x1000" | "1500x1500" | "1600x1600" | "2000x2000";
+
+export const IMAGE_SIZE_OPTIONS: { value: ImageSize; label: string; description: string }[] = [
+  { value: "800x800", label: "800×800", description: "标准（默认）" },
+  { value: "1000x1000", label: "1000×1000", description: "Temu/速卖通" },
+  { value: "1500x1500", label: "1500×1500", description: "Shopify/通用电商" },
+  { value: "1600x1600", label: "1600×1600", description: "Amazon推荐" },
+  { value: "2000x2000", label: "2000×2000", description: "Amazon最高质量" },
+];
 
 // ===== Sales Region System =====
 

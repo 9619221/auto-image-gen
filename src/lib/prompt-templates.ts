@@ -436,6 +436,8 @@ function inferProductStrategy(analysis: AnalysisResult) {
     "Oven-Safe", "Food-Safe", "Family Size", "Waterproof", "With Lid",
     "Aluminum", "Full Set", "Multi-Use", "Bulk Value", "Premium",
     "Lightweight", "Great Gift", "Gift Idea", "Gift-Ready",
+    // Fitness / Sports — must not appear on beauty/nail/cosmetics products
+    "Total Body", "Full Stretch", "Flex Fit", "Body Sculpt", "Skin-Safe", "Rehab-Ready",
   ]);
 
   // Badges that should NOT appear on jewelry/accessories
@@ -1241,7 +1243,9 @@ const multiSceneLayouts = [
 export function generatePlans(
   analysis: AnalysisResult,
   imageTypes: ImageType[],
-  salesRegion: SalesRegion = "us"
+  salesRegion: SalesRegion = "us",
+  imageSize: string = "800x800",
+  productMode: string = "single"
 ): ImagePlan[] {
   const regionConfig = REGION_CONFIGS[salesRegion];
   const imageLanguage = regionToLanguage(salesRegion);
@@ -1343,6 +1347,19 @@ If ANY check fails, REGENERATE with corrections.
     estimatedDimensions: sanitizeForPrompt(analysis.estimatedDimensions || "", 100),
     creativeBriefs: analysis.creativeBriefs || {},
   };
+
+  const is2DFlat = analysis.productForm === "2d_flat";
+  const flatProductRule = is2DFlat ? `
+🎨 2D FLAT PRODUCT RULE (CRITICAL):
+- This product is a FLAT, THIN 2D item (sticker, decal, card, print, poster, label, patch, etc.)
+- It must ALWAYS appear as a FLAT surface — NO 3D depth, NO thickness, NO volume
+- Show it lying flat on a surface, or being peeled/applied, or displayed on a wall/surface
+- In lifestyle scenes: show people APPLYING it to surfaces (laptop, notebook, wall, bottle), NOT holding a 3D object
+- In closeup: show the PRINT QUALITY, color vibrancy, cut precision, adhesive backing — NOT 3D texture
+- In dimensions: show flat measurements (width × height) — do NOT show depth/thickness
+- NEVER render it as a 3D figurine, toy, or physical object with volume
+- The product should look like a PRINTED IMAGE on material, with visible flat edges
+` : "";
 
   const strategy = inferProductStrategy(sanitizedAnalysis);
   const { productName } = strategy;
@@ -1508,6 +1525,13 @@ ANTI-COLOR-DRIFT RULES:
 - EVERY polished nail in EVERY image across the listing must show the SAME color. A customer seeing different nail colors in different images will think the listing is fake.
 - In the comparison image: "Ours" side nails must clearly show the product color with good coverage and gloss. "Ordinary" side must show BARE/UNPOLISHED nails (no polish at all) or clearly chipped/faded polish — the contrast must be OBVIOUS.
 - COLOR VERIFICATION: Before finalizing, compare the rendered nail color against the bottle liquid. If there is any visible difference in hue or saturation, adjust the nail color to match.
+
+🔬 CLOSEUP / MACRO COLOR RULE (for ALL closeup and detail shots):
+- In closeup/macro shots, colors tend to appear DARKER than the actual product — COMPENSATE for this by keeping the color EXACTLY as the reference, NOT darker
+- Do NOT let shallow depth of field, dramatic lighting, or dark backgrounds shift the product color deeper/darker
+- The closeup color must match the wide-shot color EXACTLY — if the product is bright green in the main image, it must be the SAME bright green in the closeup, NOT dark forest green
+- For nail polish closeups: the nail color in extreme closeup MUST be identical to the nail color in medium shots — do NOT add extra depth/darkness just because it's a closeup
+- TECHNIQUE: Compare your closeup render side-by-side with the main/hero image — the product color must be indistinguishable
 ` : "";
 
   // 模特多样性规则
@@ -1629,6 +1653,7 @@ ${getCreativeBrief("main")}
 ⚠️ ${langRule}
 ${cleanCornerRule}
 ${productIdentityRule}
+${flatProductRule}
 ${structureLockRule}
 🔒 Show ONLY ONE product. Match the reference exactly in shape, color, material, finish, and proportions.
 ${colorRule}
@@ -1660,7 +1685,7 @@ RULES:
 - No dimension lines, no duplicate products
 - No loose screws, tools, or packaging materials
 - Keep real-world proportions
-- 800x800px
+- ${imageSize}px
 
 STYLE:
 - High-end e-commerce photography — the kind that makes you click "Add to Cart"
@@ -1684,6 +1709,7 @@ ${getCreativeBrief("features")}
 ⚠️ ${langRule}
 ${cleanCornerRule}
 ${productIdentityRule}
+${flatProductRule}
 ${structureLockRule}
 ${textSafeZoneRule}
 ${noCopyReferenceTextRule}
@@ -1754,7 +1780,7 @@ STYLE:
 - Premium Amazon listing image that makes the customer STOP scrolling
 - Bold, clear headline typography that reads instantly on mobile
 - The headline should hit like a punch — the customer immediately recognizes their problem
-- 800x800px`,
+- ${imageSize}px`,
         };
       }
 
@@ -1770,6 +1796,7 @@ ${getCreativeBrief("closeup")}
 ⚠️ ${langRule}
 ${cleanCornerRule}
 ${productIdentityRule}
+${flatProductRule}
 ${structureLockRule}
 ${textSafeZoneRule}
 ${noCopyReferenceTextRule}
@@ -1835,7 +1862,7 @@ STYLE:
 - Premium close-up product photography
 - Shallow depth of field, refined lighting
 - Clean background
-- 800x800px`,
+- ${imageSize}px`,
         };
 
       case "dimensions":
@@ -1850,6 +1877,7 @@ ${getCreativeBrief("dimensions")}
 ⚠️ ${langRule}
 ${cleanCornerRule}
 ${productIdentityRule}
+${flatProductRule}
 ${structureLockRule}
 🔒 Show ONLY ONE product. Keep the product identical to the reference.
 ${colorRule}
@@ -1869,6 +1897,15 @@ LAYOUT:
 - Thin clean measurement lines
 - Strong whitespace
 - ⚠️ CRITICAL FOR REDUCING RETURNS: Include a common reference object for scale so the customer understands the REAL size
+
+📏 PROPORTION ACCURACY — CRITICAL:
+- The product's VISUAL proportions in the image MUST match the LABELED dimensions
+- Example: if the product is labeled 10cm tall × 4cm wide, the product image must appear roughly 2.5× taller than it is wide
+- Do NOT draw a nearly square product when dimensions say it is elongated (or vice versa)
+- Do NOT draw a tall thin product when dimensions say it is short and wide
+- The HEIGHT:WIDTH:DEPTH ratio shown visually must be CONSISTENT with the numbers on the labels
+- If the reference photo shows the real proportions, MATCH THOSE proportions exactly
+- Common AI failure: ignoring real proportions and making everything look roughly square — AVOID THIS
 ${strategy.isSmallProduct
   ? `- ⚠️ THIS IS A SMALL PRODUCT — show a human hand holding or placing the product to demonstrate its compact size. The customer MUST understand it is small BEFORE purchasing.
 - Include a familiar reference object next to the product: a coin, a fingertip, or a pen cap
@@ -1879,11 +1916,19 @@ TEXT RULES:
 - Short labels only
 - Small header: "Size Guide"
 - Match these values: ${sanitizedAnalysis.estimatedDimensions}
-
+${productMode === "variants" ? `
+📊 VARIANTS SIZE TABLE (CRITICAL — this is a multi-variant product):
+- Include a CLEAR SIZE COMPARISON TABLE or CHART below or beside the product
+- The table should list ALL available variants/sizes/colors with their dimensions
+- Format: clean rows with variant name | dimensions (e.g., "Small: 15×10cm | Medium: 20×15cm | Large: 25×20cm")
+- If variants are colors (not sizes), show a color swatch row with color names
+- The table must be easy to read on mobile — use bold headers, clean lines, high contrast
+- This helps customers choose the RIGHT variant before purchasing
+` : ""}
 STYLE:
 - Premium brand size-guide look
 - Elegant, restrained, easy to scan on mobile
-- 800x800px`,
+- ${imageSize}px`,
         };
 
       case "lifestyle": {
@@ -1901,6 +1946,7 @@ ${getCreativeBrief("lifestyle")}
 ${regionStyleRule}
 ${cleanCornerRule}
 ${productIdentityRule}
+${flatProductRule}
 ${structureLockRule}
 ${textSafeZoneRule}
 ${noCopyReferenceTextRule}
@@ -1977,7 +2023,7 @@ STYLE:
 - The product should look like something the viewer NEEDS, not just sees
 - Show a REAL usage moment — the customer sees themselves in the photo and feels the product solving their problem
 - The emotion in the image should be: satisfaction, confidence, joy, or relief — the customer AFTER using this product
-- 800x800px`,
+- ${imageSize}px`,
         };
       }
 
@@ -1994,6 +2040,7 @@ Material: ${strategy.materials}
 ⚠️ ${langRule}
 ${cleanCornerRule}
 ${productIdentityRule}
+${flatProductRule}
 ${structureLockRule}
 ${textSafeZoneRule}
 ${noCopyReferenceTextRule}
@@ -2048,7 +2095,7 @@ STYLE:
 - Premium comparison/value image
 - Clean surface, balanced spacing
 - Feels polished and trustworthy
-- 800x800px`,
+- ${imageSize}px`,
         };
 
       case "lifestyle2": {
@@ -2065,6 +2112,7 @@ ${getCreativeBrief("lifestyle2")}
 ${regionStyleRule}
 ${cleanCornerRule}
 ${productIdentityRule}
+${flatProductRule}
 ${structureLockRule}
 ${strictSingleProductRule}
 ${brandSystemRule}
@@ -2139,7 +2187,7 @@ STYLE:
 - This is the LAST image before the customer decides — it must CLOSE THE SALE
 - Every panel should answer a potential objection: quality, versatility, value
 - The overall message: "This product fits perfectly into YOUR life"
-- 800x800px`,
+- ${imageSize}px`,
         };
       }
 
@@ -2244,231 +2292,122 @@ STYLE:
 - Bold, scannable on mobile — the customer decides in under 2 seconds
 - High contrast between the two sides — night and day difference
 - The customer should think: "Obviously I want the left one"
-- 800x800px`,
+- ${imageSize}px`,
         };
 
       case "scene_a": {
         const sceneAGuide = getCategorySceneGuide(strategy.category, strategy.productName);
-        const usageScenes = strategy.usageScenes || [];
-        const sp = strategy.sellingPoints || [];
-        const badgePool = [strategy.painPointBadge1, strategy.painPointBadge2, strategy.functionBadge1, strategy.functionBadge2].filter(Boolean);
-        const spTexts = [badgePool[0] || sp[0] || "Premium Quality", badgePool[1] || sp[1] || "Easy to Use", badgePool[2] || sp[2] || "Durable", badgePool[3] || sp[0] || "Versatile"];
-
-        // 随机选布局风格
-        const layouts = ["quad", "single_hero", "triptych"] as const;
-        const layout = pickRandom([...layouts]);
-
-        const demographicPool = [
-          "young woman (25-35) in casual athletic wear",
-          "athletic man (28-38) in sportswear",
-          "professional woman (30-40) in business casual",
-          "mature man (50-60) in comfortable clothes",
-          "college student (20-25) in casual outfit",
-          "retired person (60+) staying active",
-        ];
-        const shuffledDemos = [...demographicPool].sort(() => Math.random() - 0.5);
-
-        const handSafetyRule = `
-🖐️ HAND SAFETY FOR SCENE IMAGES (CRITICAL):
-- PREFERRED: Show the person from MEDIUM or WIDE distance so hands are SMALL in frame
-- If hands must appear holding the product, wrap them AROUND the product so fingers are partially hidden
-- NEVER show a close-up of hands gripping the product — keep camera at arm's length minimum
-- Show ONLY ONE HAND holding the product when possible
-- If hand quality would be poor, use these alternatives:
-  • Product placed on a surface NEAR the person (on table, on lap, beside them)
-  • Person shown from behind/side with product visible but hands obscured
-  • Arms visible but hands cropped at wrist by frame edge
-  • Product in use but camera focused on the person's face/body, hands soft-focused in background
-`;
-
-        let layoutPrompt = "";
-        if (layout === "quad") {
-          layoutPrompt = `📐 LAYOUT — 2x2 GRID:
-- Divide the 800x800 image into 4 EQUAL quadrants (2 columns × 2 rows)
-- Thin white gap (4-6px) between quadrants
-- Each quadrant: a lifestyle scene + SHORT selling point text overlay at bottom
-
-🎬 QUADRANT SCENES:
-- TOP-LEFT: ${usageScenes[0] || "home living room"} — ${shuffledDemos[0]} — text: "${spTexts[0]}"
-- TOP-RIGHT: ${usageScenes[1] || "office or workspace"} — ${shuffledDemos[1]} — text: "${spTexts[1]}"
-- BOTTOM-LEFT: ${usageScenes[2] || "outdoor or gym"} — ${shuffledDemos[2]} — text: "${spTexts[2]}"
-- BOTTOM-RIGHT: ${usageScenes[3] || strategy.scene3 || "travel or on-the-go"} — ${shuffledDemos[3]} — text: "${spTexts[3]}"
-
-- Use MEDIUM/WIDE shots in each quadrant — hands should be SMALL in frame
-- Text: bold white sans-serif on semi-transparent dark gradient bar at bottom of each quadrant`;
-        } else if (layout === "single_hero") {
-          layoutPrompt = `📐 LAYOUT — SINGLE HERO SCENE (full 800x800):
-- ONE rich, immersive lifestyle scene filling the entire image
-- Scene: ${usageScenes[0] || strategy.scene3 || "home living room, natural environment"}
-- Person: ${shuffledDemos[0]}
-- The person is using the product naturally in this setting
-- Rich environmental details: 3-4 contextual props (cup, book, plant, phone, etc.)
-- Warm, editorial photography with depth and atmosphere
-
-✍️ TEXT:
-- TOP area: one bold headline selling point: "${spTexts[0]}"
-- BOTTOM area: 2-3 smaller benefit keywords arranged horizontally: "${spTexts[1]}" | "${spTexts[2]}" | "${spTexts[3]}"
-- White text with subtle drop shadow for readability
-- Text safe zone: keep all text at least 60px from edges`;
-        } else {
-          layoutPrompt = `📐 LAYOUT — TRIPTYCH (1 large + 2 small):
-- LEFT HALF (400x800): one large lifestyle scene — ${usageScenes[0] || "main usage scene"} — ${shuffledDemos[0]} using the product
-- RIGHT TOP (400x400): different scene — ${usageScenes[1] || "secondary scene"} — ${shuffledDemos[1]}
-- RIGHT BOTTOM (400x400): another scene — ${usageScenes[2] || "third scene"} — ${shuffledDemos[2]}
-- Thin white gap between panels
-
-✍️ TEXT:
-- Large left panel: bold headline "${spTexts[0]}" at top
-- Right top panel: small text "${spTexts[1]}" at bottom
-- Right bottom panel: small text "${spTexts[2]}" at bottom
-- White bold sans-serif on dark gradient bars`;
-        }
+        const sceneA1 = strategy.usageScenes?.[0] || strategy.scene3 || "primary use at home";
+        const sceneA2 = strategy.usageScenes?.[1] || strategy.scene4 || "secondary use outdoors";
+        const sceneA3 = strategy.usageScenes?.[2] || "another creative application";
 
         return {
           imageType,
-          title: "核价场景图A",
-          description: `${productName} — diverse lifestyle scene(s) with selling points (${layout} layout).`,
-          validationNotes: ["product-relevant scenes", "selling point text", "good hand rendering"],
-          prompt: `Create a lifestyle scene image for ${productName} showcasing the product in real-world use.
+          title: "核价场景图A — 多场景应用",
+          description: `${productName}在不同场景中的应用，展示产品的多功能性和广泛适用性。`,
+          validationNotes: ["multiple scenarios", "versatility", "product clearly visible"],
+          prompt: `⛔⛔⛔ CRITICAL RULE — READ THIS FIRST ⛔⛔⛔
+DO NOT place any floating, overlaid, or standalone product cutout ANYWHERE in this image — not in the center, not in corners, not between panels. There must be ZERO product hero shots, ZERO circular/diamond/rectangular product cutouts, ZERO product-on-white overlays. Every single pixel of this image must be part of a SCENE showing the product IN USE. If you are tempted to add a "product showcase" element floating over the scenes — DO NOT. This is the #1 most important rule for this image.
+⛔⛔⛔ END CRITICAL RULE ⛔⛔⛔
+
+Create a MULTI-USE / VERSATILE APPLICATION image for this ${productName}.
 
 ⚠️ ${langRule}
 ${regionStyleRule}
 ${productIdentityRule}
+${flatProductRule}
 ${structureLockRule}
 ${noCopyReferenceTextRule}
 ${colorRule}
 ${humanAnatomyRule}
-${handSafetyRule}
 ${sceneAGuide}
 
-⚠️ SCENE-PRODUCT FIT (CRITICAL):
-- The product is: ${productName} (category: ${strategy.category})
-- Every scene MUST show the product being USED in a way that makes REAL-WORLD SENSE
-- If a scene doesn't fit the product, CHANGE the scene to one that does
-- Person should be ACTIVELY USING the product, not just posing with it
+LAYOUT:
+- Show the product being used in MULTIPLE different scenarios or locations
+- Can use a split-image layout or embedded scene thumbnails
+- Each scenario should show a DIFFERENT use case
+- 🚫 ABSOLUTELY NO floating/overlaid product cutout in the center or anywhere outside the scene panels. NO product hero shot overlapping panels. EVERY visible area must be a SCENE — no standalone product images, no circular/diamond cutouts, no product-on-white overlays
 
-${layoutPrompt}
+SCENARIOS TO SHOW:
+1. ${sceneA1} — primary use
+2. ${sceneA2} — secondary use
+3. ${sceneA3} — another creative application
 
-📷 PHOTOGRAPHIC REALISM:
-- Real camera look: natural depth of field, genuine lighting, real textures
-- Real skin with pores, real fabric weave, natural imperfections
-- NO AI glow or unnaturally smooth surfaces
-- Warm editorial color grading
-- Different demographics for maximum audience appeal
+🖐️ HAND RENDERING:
+- Show people from MEDIUM or WIDE distance so hands are SMALL in frame
+- If hands must hold the product, wrap them AROUND so fingers are partially hidden
+- If hand quality would be poor: place product on surface, or crop hands at wrist
 
-- 800x800px`,
+TEXT ELEMENTS:
+- Header: a short, catchy headline about the product's key benefit
+- Label each scenario/location with a short benefit keyword
+- Clean white or dark text on subtle gradient bars
+
+STYLE:
+- Clean layout that clearly shows multiple applications
+- Each mini-scene should be realistic and well-lit
+- Product is clearly recognizable in each scene
+- Demonstrates VALUE through versatility
+- Different demographics across scenes for broad appeal
+- ${imageSize}px, commercial quality
+
+The goal is to show customers this product is useful in MANY situations, not just one.`,
         };
       }
 
       case "scene_b": {
         const sceneBGuide = getCategorySceneGuide(strategy.category, strategy.productName);
-        const usageScenesB = strategy.usageScenes || [];
-        const compBadges = strategy.comparisonBadges || [];
-        const spBTexts = [
-          compBadges[0] || strategy.painPointHeadline || "Trusted Quality",
-          compBadges[1] || strategy.functionHeadline || "Built to Last",
-          compBadges[2] || strategy.resultHeadline || "Easy & Convenient",
-          strategy.valueHeadline || compBadges[0] || "Customer Favorite",
-        ];
-
-        // 场景B用不同的布局
-        const layoutsB = ["quad", "single_hero", "horizontal_split"] as const;
-        const layoutB = pickRandom([...layoutsB]);
-
-        const demographicPoolB = [
-          "retired couple (60+), staying active together",
-          "teenager (16-20) in casual clothes, energetic",
-          "professional man (35-45) in business casual",
-          "young Asian woman (22-30) in modern athleisure",
-          "Hispanic man (30-40) in workout gear",
-          "African American woman (28-35) in stylish activewear",
-        ];
-        const shuffledDemosB = [...demographicPoolB].sort(() => Math.random() - 0.5);
-
-        const handSafetyRuleB = `
-🖐️ HAND SAFETY FOR SCENE IMAGES (CRITICAL):
-- PREFERRED: Show the person from MEDIUM or WIDE distance so hands are SMALL in frame
-- If hands must appear, wrap them AROUND the product so fingers are partially hidden
-- NEVER show close-up of hands gripping the product
-- Show ONLY ONE HAND when possible — two hands doubles error risk
-- Alternatives if hand quality would be poor:
-  • Product on a surface NEAR the person
-  • Person shown from behind/side, hands obscured
-  • Arms visible, hands cropped at wrist
-  • Hands soft-focused in background while face is sharp
-`;
-
-        let layoutPromptB = "";
-        if (layoutB === "quad") {
-          layoutPromptB = `📐 LAYOUT — 2x2 GRID:
-- 4 EQUAL quadrants, thin white gaps between them
-- Each quadrant: lifestyle scene + benefit text
-
-🎬 QUADRANT SCENES (all different from scene_a):
-- TOP-LEFT: ${usageScenesB[2] || strategy.scene4 || "travel or portable use"} — ${shuffledDemosB[0]} — text: "${spBTexts[0]}"
-- TOP-RIGHT: ${usageScenesB[3] || "outdoor balcony or patio"} — ${shuffledDemosB[1]} — text: "${spBTexts[1]}"
-- BOTTOM-LEFT: ${usageScenesB[1] || "bedroom morning routine"} — ${shuffledDemosB[2]} — text: "${spBTexts[2]}"
-- BOTTOM-RIGHT: ${usageScenesB[0] || strategy.scene3 || "gym or fitness space"} — ${shuffledDemosB[3]} — text: "${spBTexts[3]}"
-
-- MEDIUM/WIDE shots — hands small in frame
-- White bold text on dark gradient bar at bottom of each quadrant`;
-        } else if (layoutB === "single_hero") {
-          layoutPromptB = `📐 LAYOUT — SINGLE HERO SCENE (full 800x800):
-- ONE rich lifestyle scene, COMPLETELY DIFFERENT from scene_a
-- Scene: ${usageScenesB[1] || strategy.scene4 || "different environment from scene_a"}
-- Person: ${shuffledDemosB[0]}
-- Different time of day, different mood, different setting than scene_a
-
-✍️ TEXT:
-- Bold headline: "${spBTexts[0]}" at top
-- Bottom row: "${spBTexts[1]}" | "${spBTexts[2]}" as smaller text
-- White text, subtle drop shadow, 60px from edges`;
-        } else {
-          layoutPromptB = `📐 LAYOUT — HORIZONTAL SPLIT (top + bottom):
-- TOP HALF (800x400): wide cinematic scene — ${usageScenesB[0] || "primary usage"} — ${shuffledDemosB[0]} using product
-  • Bold headline text: "${spBTexts[0]}" overlaid at top-left
-- BOTTOM HALF (800x400): different wide scene — ${usageScenesB[2] || "different context"} — ${shuffledDemosB[1]} using product
-  • Bold headline text: "${spBTexts[1]}" overlaid at bottom-left
-- Thin white gap between top and bottom
-- Both scenes shot from MEDIUM distance, cinematic widescreen feel`;
-        }
+        const scene1 = strategy.usageScenes?.[0] || strategy.scene3 || "primary use";
+        const scene2 = strategy.usageScenes?.[1] || strategy.scene4 || "secondary use";
+        const scene3 = strategy.usageScenes?.[2] || "another creative application";
 
         return {
           imageType,
-          title: "核价场景图B",
-          description: `${productName} — diverse lifestyle scene(s) with benefit highlights (${layoutB} layout).`,
-          validationNotes: ["different from scene_a", "product-relevant", "good hand rendering"],
-          prompt: `Create a lifestyle scene image for ${productName} — this MUST look COMPLETELY DIFFERENT from scene_a in layout, scene, and mood.
+          title: "核价场景图B — 多场景应用",
+          description: `${productName}在不同场景中的应用：${scene2}，展示产品的多功能性和广泛适用性。`,
+          validationNotes: ["multiple scenarios", "versatility", "different from scene_a"],
+          prompt: `Create a MULTI-USE / VERSATILE APPLICATION image for this ${productName}.
 
 ⚠️ ${langRule}
 ${regionStyleRule}
 ${productIdentityRule}
+${flatProductRule}
 ${structureLockRule}
 ${noCopyReferenceTextRule}
 ${colorRule}
 ${humanAnatomyRule}
-${handSafetyRuleB}
 ${sceneBGuide}
 
-⚠️ SCENE-PRODUCT FIT (CRITICAL):
-- The product is: ${productName} (category: ${strategy.category})
-- Every scene MUST show REALISTIC product use — no random/irrelevant settings
-- Person ACTIVELY USING the product, not just holding it as a prop
+LAYOUT:
+- Show the product being used in MULTIPLE different scenarios or locations
+- Can use a split-image layout or embedded scene thumbnails
+- Each scenario should show a DIFFERENT use case
+- 🚫 ABSOLUTELY NO floating/overlaid product cutout in the center or anywhere outside the scene panels. NO product hero shot overlapping panels. EVERY visible area must be a SCENE — no standalone product images, no circular/diamond cutouts, no product-on-white overlays
 
-${layoutPromptB}
+SCENARIOS TO SHOW:
+1. ${scene1} — primary use
+2. ${scene2} — secondary use
+3. ${scene3} — another creative application
 
-🌍 DIVERSITY:
-- DIFFERENT demographics from scene_a
-- DIFFERENT settings, time of day, mood
-- Cover a NEW customer segment that scene_a didn't reach
+🖐️ HAND RENDERING:
+- Show people from MEDIUM or WIDE distance so hands are SMALL in frame
+- If hands must hold the product, wrap them AROUND so fingers are partially hidden
+- If hand quality would be poor: place product on surface, or crop hands at wrist
 
-📷 PHOTOGRAPHIC REALISM:
-- Editorial magazine quality — real camera, real textures, real expressions
-- Warm cinematic color grading
-- Natural depth of field with beautiful bokeh
-- NO AI artifacts on skin, hands, or faces
+TEXT ELEMENTS:
+- Header: a short, catchy headline about the product's versatility
+- Label each scenario/location with a short benefit keyword
+- Clean white or dark text on subtle gradient bars
 
-- 800x800px`,
+STYLE:
+- Clean layout that clearly shows multiple applications
+- Each mini-scene should be realistic and well-lit
+- Product is clearly recognizable in each scene
+- Demonstrates VALUE through versatility
+- Different demographics across scenes for broad appeal
+- ${imageSize}px, commercial quality
+
+The goal is to show customers this product is useful in MANY situations, not just one.`,
         };
       }
 
@@ -2477,7 +2416,7 @@ ${layoutPromptB}
           imageType,
           title: IMAGE_TYPE_LABELS[imageType],
           description: `${productName} professional product image`,
-          prompt: `Create a professional product image for ${productName}. Clean background. Premium commercial look. 800x800px.`,
+          prompt: `Create a professional product image for ${productName}. Clean background. Premium commercial look. ${imageSize}px.`,
         };
     }
   });
